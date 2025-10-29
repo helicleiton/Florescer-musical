@@ -11,6 +11,7 @@ import { MenuIcon } from './components/icons/MenuIcon';
 import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
 import { db } from './firebase/config';
 import { collection, onSnapshot, doc, addDoc, setDoc, deleteDoc, query, orderBy, writeBatch, DocumentReference } from 'firebase/firestore';
+import { weeklySchedule } from './data/schedule';
 
 type View = 'dashboard' | 'students' | 'classes' | 'workshops' | 'schedule';
 
@@ -82,17 +83,6 @@ function App() {
   const deleteStudent = async (id: string) => {
     await deleteDoc(doc(db, 'students', id));
   };
-  
-  const addWorkshop = async (workshopData: Omit<Workshop, 'id'>) => {
-    await addDoc(collection(db, 'workshops'), workshopData);
-  };
-  const updateWorkshop = async (workshopData: Workshop) => {
-    const workshopRef = doc(db, 'workshops', workshopData.id);
-    await setDoc(workshopRef, workshopData, { merge: true });
-  };
-  const deleteWorkshop = async (id: string) => {
-    await deleteDoc(doc(db, 'workshops', id));
-  };
 
   const addClass = async (classData: Omit<MusicClass, 'id'>) => {
     await addDoc(collection(db, 'classes'), classData);
@@ -118,45 +108,53 @@ function App() {
   };
 
   const seedDatabase = async () => {
-    if (!window.confirm("Isso irá inserir dados de exemplo no banco de dados. Deseja continuar?")) return;
+    if (!window.confirm("Isso irá apagar os dados existentes e inserir dados de exemplo no banco de dados. Deseja continuar?")) return;
     
     setLoading(true);
     try {
       const batch = writeBatch(db);
 
-      // Sample Workshops
-      const sampleWorkshops = [
-          { name: 'Violão A' },
-          { name: 'Teclado B' },
-          { name: 'Musicalização A' },
-          { name: 'Técnica Vocal' },
-          { name: 'Violão C' }
-      ];
-
+      // Create workshops from the central schedule
+      const workshopNames = [...new Set(weeklySchedule.map(item => item.name))];
       const workshopRefs: { [key: string]: DocumentReference } = {};
-      for (const ws of sampleWorkshops) {
+      for (const name of workshopNames) {
           const workshopRef = doc(collection(db, 'workshops'));
-          batch.set(workshopRef, { name: ws.name });
-          workshopRefs[ws.name] = workshopRef;
+          batch.set(workshopRef, { name });
+          workshopRefs[name] = workshopRef;
       }
 
       // Sample Students
       const student1Ref = doc(collection(db, 'students'));
       batch.set(student1Ref, { name: 'Ana Silva', age: 12, workshopId: workshopRefs['Violão A'].id, registrationDate: new Date().toISOString() });
+      
       const student2Ref = doc(collection(db, 'students'));
       batch.set(student2Ref, { name: 'Bruno Costa', age: 10, workshopId: workshopRefs['Teclado B'].id, registrationDate: new Date().toISOString() });
+      
       const student3Ref = doc(collection(db, 'students'));
-      batch.set(student3Ref, { name: 'Carla Dias', age: 8, workshopId: workshopRefs['Musicalização A'].id, registrationDate: new Date().toISOString() });
+      batch.set(student3Ref, { name: 'Carla Dias', age: 8, workshopId: workshopRefs['Musicalização Infantil A'].id, registrationDate: new Date().toISOString() });
+
       const student4Ref = doc(collection(db, 'students'));
       batch.set(student4Ref, { name: 'Daniel Faria', age: 14, workshopId: null, registrationDate: new Date().toISOString() });
+
       const student5Ref = doc(collection(db, 'students'));
       batch.set(student5Ref, { name: 'Elisa Gomes', age: 15, workshopId: workshopRefs['Técnica Vocal'].id, registrationDate: new Date().toISOString() });
+      
+      const student6Ref = doc(collection(db, 'students'));
+      batch.set(student6Ref, { name: 'Felipe Mendes', age: 13, workshopId: workshopRefs['Violão C'].id, registrationDate: new Date().toISOString() });
 
-      // Sample Class
+      const student7Ref = doc(collection(db, 'students'));
+      batch.set(student7Ref, { name: 'Gabriela Lima', age: 11, workshopId: workshopRefs['Teclado D'].id, registrationDate: new Date().toISOString() });
+
+      // Sample Classes
       const classDate = new Date();
       classDate.setDate(classDate.getDate() + 7);
       const class1Ref = doc(collection(db, 'classes'));
       batch.set(class1Ref, { topic: 'Introdução a Acordes Maiores', teacher: 'Helicleiton', date: classDate.toISOString(), studentIds: [student1Ref.id, student4Ref.id] });
+      
+      const class2Date = new Date();
+      class2Date.setDate(class2Date.getDate() + 10);
+      const class2Ref = doc(collection(db, 'classes'));
+      batch.set(class2Ref, { topic: 'Leitura de Partituras', teacher: 'Karla Silva', date: class2Date.toISOString(), studentIds: [student3Ref.id, student7Ref.id] });
 
       await batch.commit();
       alert('Dados de exemplo inseridos com sucesso!');
@@ -221,9 +219,6 @@ function App() {
         return <Workshops 
                   workshops={workshops} 
                   students={students} 
-                  onAdd={addWorkshop}
-                  onUpdate={updateWorkshop}
-                  onDelete={deleteWorkshop}
                 />;
       case 'classes':
         return <Classes 

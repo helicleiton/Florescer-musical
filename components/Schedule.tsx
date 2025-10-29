@@ -41,7 +41,8 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan }) =
       const dayOfWeek = currentDate.getUTCDay();
       for (const scheduleItem of weeklySchedule) {
         if (scheduleItem.day === dayOfWeek) {
-          const [hours, minutes] = scheduleItem.time.split(':').map(Number);
+          const startTime = scheduleItem.time.split(' ')[0];
+          const [hours, minutes] = startTime.split(':').map(Number);
           const classDate = new Date(currentDate);
           classDate.setUTCHours(hours, minutes, 0, 0);
           

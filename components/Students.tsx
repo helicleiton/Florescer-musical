@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Student, Workshop } from '../types';
 import { Modal } from './Modal';
 import { weeklySchedule, dayNames } from '../data/schedule';
@@ -20,14 +20,29 @@ const StudentForm: React.FC<{
 }> = ({ student, onSave, onCancel, workshops }) => {
   const [name, setName] = useState(student?.name || '');
   const [age, setAge] = useState(student?.age || 0);
-  const [workshopId, setWorkshopId] = useState(student?.workshopId || null);
+  
+  // Encontra o nome da oficina inicial a partir do ID do aluno
+  const initialWorkshopName = workshops.find(w => w.id === student?.workshopId)?.name ?? '';
+  const [selectedWorkshopName, setSelectedWorkshopName] = useState(initialWorkshopName);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && age > 0) {
-      onSave({ ...(student || {}), name, age, workshopId });
+      // Encontra a oficina pelo nome para obter seu ID para salvar
+      const targetWorkshop = workshops.find(w => w.name === selectedWorkshopName);
+      const workshopIdToSave = targetWorkshop ? targetWorkshop.id : null;
+      onSave({ ...(student || {}), name, age, workshopId: workshopIdToSave });
     }
   };
+
+  const sortedSchedule = useMemo(() => [...weeklySchedule].sort((a, b) => {
+    if (a.day !== b.day) {
+      return a.day - b.day;
+    }
+    const timeA = a.time.split(' ')[0];
+    const timeB = b.time.split(' ')[0];
+    return timeA.localeCompare(timeB);
+  }), []);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -41,14 +56,16 @@ const StudentForm: React.FC<{
       </div>
       <div>
         <label htmlFor="workshop" className="block text-sm font-medium text-gray-700">Oficina / Turma</label>
-        <select id="workshop" value={workshopId || ''} onChange={(e) => setWorkshopId(e.target.value || null)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+        <select 
+          id="workshop" 
+          value={selectedWorkshopName} 
+          onChange={(e) => setSelectedWorkshopName(e.target.value)} 
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+        >
           <option value="">Nenhuma - Aluno Avulso</option>
-          {workshops.map(w => {
-            const scheduleInfo = weeklySchedule.find(s => s.name === w.name);
-            const label = scheduleInfo 
-              ? `${w.name} - ${dayNames[scheduleInfo.day]} às ${scheduleInfo.time} (Prof. ${scheduleInfo.teacher})`
-              : w.name;
-            return <option key={w.id} value={w.id}>{label}</option>
+          {sortedSchedule.map(w => {
+            const label = `${w.name} - ${dayNames[w.day]} ${w.time} (Prof. ${w.teacher})`;
+            return <option key={w.name} value={w.name}>{label}</option>
           })}
         </select>
       </div>
