@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import type { Student, Workshop } from '../types';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
-import { MusicalNoteIcon } from './icons/MusicalNoteIcon';
 import { weeklySchedule } from '../data/schedule';
 
 // Adicionado para alinhar com a data de início real do curso
@@ -26,8 +25,6 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string |
 );
 
 export const Dashboard: React.FC<DashboardProps> = ({ students, workshops }) => {
-  const studentsInWorkshops = students.filter(s => s.workshopName).length;
-  
   const upcomingFixedClasses = useMemo(() => {
     const SAO_PAULO_OFFSET_HOURS = 3;
     const courseEndDate = new Date('2026-05-01T02:59:59Z'); // Corresponds to 2026-04-30 23:59:59 in São Paulo (UTC-3)
@@ -72,7 +69,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, workshops }) => 
     <div className="p-8">
       <h2 className="text-3xl font-bold text-on-surface mb-6">Dashboard</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <StatCard 
           icon={<UserGroupIcon className="w-6 h-6 text-white"/>} 
           label="Total de Alunos" 
@@ -84,12 +81,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, workshops }) => 
           label="Aulas Restantes" 
           value={upcomingFixedClasses.length} 
           color="bg-emerald-500"
-        />
-        <StatCard 
-          icon={<MusicalNoteIcon className="w-6 h-6 text-white"/>} 
-          label="Alunos em Oficinas" 
-          value={studentsInWorkshops}
-          color="bg-amber-500"
         />
       </div>
 
