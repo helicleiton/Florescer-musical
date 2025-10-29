@@ -5,7 +5,7 @@ import { Students } from './components/Students';
 import { Workshops } from './components/Instruments';
 import { Schedule } from './components/Schedule';
 import { StudentProfile } from './components/StudentProfile';
-import type { Student, Workshop, LessonPlan, StudentNote } from './types';
+import type { Student, Workshop, LessonPlan, StudentNote, Attendance } from './types';
 import { MenuIcon } from './components/icons/MenuIcon';
 import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
 import { db } from './firebase/config';
@@ -34,6 +34,7 @@ function App() {
   const [students, setStudents] = useState<Student[]>([]);
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [studentNotes, setStudentNotes] = useState<StudentNote[]>([]);
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
 
   const derivedWorkshops: Workshop[] = useMemo(() => {
@@ -68,6 +69,11 @@ function App() {
       unsubs.push(onSnapshot(qNotes, (querySnapshot) => {
           const notesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentNote));
           setStudentNotes(notesData);
+      }));
+
+      unsubs.push(onSnapshot(collection(db, 'attendances'), (querySnapshot) => {
+        const attendanceData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as Attendance));
+        setAttendances(attendanceData);
       }));
     };
 
@@ -132,6 +138,10 @@ function App() {
   const deleteStudentNote = async (id: string) => {
       await deleteDoc(doc(db, 'studentNotes', id));
   };
+
+  const saveAttendance = async (attendanceData: Attendance) => {
+    await setDoc(doc(db, 'attendances', attendanceData.classId), { records: attendanceData.records });
+  };
   
   const handleSelectStudent = (id: string) => {
     setSelectedStudentId(id);
@@ -182,7 +192,13 @@ function App() {
                   students={students} 
                 />;
       case 'schedule':
-        return <Schedule lessonPlans={lessonPlans} onSavePlan={saveLessonPlan} />;
+        return <Schedule 
+                  lessonPlans={lessonPlans} 
+                  onSavePlan={saveLessonPlan}
+                  students={students}
+                  attendances={attendances}
+                  onSaveAttendance={saveAttendance}
+                />;
       default:
         return <Dashboard 
                   students={students} 

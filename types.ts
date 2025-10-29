@@ -31,3 +31,12 @@ export interface StudentNote {
   content: string;
   date: string; // ISO string
 }
+
+export type AttendanceStatus = 'present' | 'absent' | 'justified';
+
+export interface Attendance {
+  classId: string;
+  records: {
+    [studentId: string]: AttendanceStatus;
+  };
+}

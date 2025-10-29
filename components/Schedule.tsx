@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import type { LessonPlan } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import type { LessonPlan, Student, Attendance, AttendanceStatus } from '../types';
 import { Modal } from './Modal';
 import { PencilSquareIcon } from './icons/PencilSquareIcon';
+import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import type { WeeklyClass } from '../data/schedule';
 import { weeklySchedule, dayNames } from '../data/schedule';
 
@@ -9,6 +10,9 @@ import { weeklySchedule, dayNames } from '../data/schedule';
 interface ScheduleProps {
   lessonPlans: LessonPlan[];
   onSavePlan: (plan: LessonPlan) => Promise<void>;
+  students: Student[];
+  attendances: Attendance[];
+  onSaveAttendance: (attendance: Attendance) => Promise<void>;
 }
 
 interface FullClassInfo extends WeeklyClass {
@@ -30,11 +34,71 @@ const getWorkshopColorStyle = (className: string) => {
   return { text: 'text-primary', icon: 'text-primary' }; // Musicalização
 };
 
+const AttendanceForm: React.FC<{
+  students: Student[];
+  initialRecords: { [studentId: string]: AttendanceStatus };
+  onSave: (records: { [studentId: string]: AttendanceStatus }) => void;
+  onCancel: () => void;
+}> = ({ students, initialRecords, onSave, onCancel }) => {
+  const [records, setRecords] = useState(initialRecords);
 
-export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan }) => {
+  const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
+    setRecords(prev => ({ ...prev, [studentId]: status }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(records);
+  };
+  
+  const statusOptions: { value: AttendanceStatus, label: string, color: string, radioColor: string }[] = [
+      { value: 'present', label: 'Presente', color: 'text-green-600', radioColor: 'ring-green-500' },
+      { value: 'absent', label: 'Ausente', color: 'text-red-600', radioColor: 'ring-red-500' },
+      { value: 'justified', label: 'Justificada', color: 'text-amber-600', radioColor: 'ring-amber-500' },
+  ];
+
+  return (
+    <form onSubmit={handleSubmit}>
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-2 -mr-2">
+            {students.length > 0 ? students.sort((a,b) => a.name.localeCompare(b.name)).map(student => (
+                <div key={student.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-md bg-slate-50">
+                    <p className="font-medium text-gray-800 mb-2 sm:mb-0">{student.name}</p>
+                    <div className="flex items-center space-x-4">
+                        {statusOptions.map(option => (
+                            <label key={option.value} className="flex items-center space-x-1.5 cursor-pointer">
+                                <input 
+                                    type="radio" 
+                                    name={`status-${student.id}`} 
+                                    value={option.value}
+                                    checked={records[student.id] === option.value}
+                                    onChange={() => handleStatusChange(student.id, option.value)}
+                                    className={`form-radio h-4 w-4 text-primary focus:${option.radioColor}`}
+                                />
+                                <span className={`text-sm ${option.color}`}>{option.label}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )) : <p className="text-center text-gray-500 py-4">Nenhum aluno encontrado para esta turma.</p>}
+        </div>
+      <div className="flex justify-end pt-4 mt-4 border-t space-x-2">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200">Cancelar</button>
+        <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">Salvar Frequência</button>
+      </div>
+    </form>
+  );
+};
+
+
+export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, students, attendances, onSaveAttendance }) => {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+
   const [selectedClass, setSelectedClass] = useState<FullClassInfo | null>(null);
   const [lessonPlanContent, setLessonPlanContent] = useState('');
+  
+  const [studentsForSelectedClass, setStudentsForSelectedClass] = useState<Student[]>([]);
+  const [currentAttendance, setCurrentAttendance] = useState<{ classId: string, records: { [key: string]: AttendanceStatus} } | null>(null);
 
   const allClasses = useMemo(() => {
     const classesRaw = [];
@@ -101,6 +165,22 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan }) =
     setLessonPlanContent('');
   };
 
+  const openAttendanceModal = (cls: FullClassInfo) => {
+    const studentsInClass = students.filter(s => s.workshopName === cls.name);
+    const existingAttendance = attendances.find(a => a.classId === cls.id) || { classId: cls.id, records: {} };
+    
+    setSelectedClass(cls);
+    setStudentsForSelectedClass(studentsInClass);
+    setCurrentAttendance(existingAttendance);
+    setIsAttendanceModalOpen(true);
+  };
+  
+  const handleSaveAttendance = (records: { [studentId: string]: AttendanceStatus }) => {
+      if (!selectedClass) return;
+      onSaveAttendance({ classId: selectedClass.id, records });
+      setIsAttendanceModalOpen(false);
+  };
+
   const renderClassList = (classList: FullClassInfo[], title: string) => (
     <div className="bg-surface p-6 rounded-lg shadow-sm mb-8">
       <h3 className="text-xl font-semibold text-on-surface mb-4">{title}</h3>
@@ -108,22 +188,30 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan }) =
         <ul className="divide-y divide-slate-200">
           {classList.map(c => {
             const hasPlan = lessonPlans.some(p => p.classId === c.id && p.content.trim() !== '');
+            const attendanceRecord = attendances.find(a => a.classId === c.id);
+            const hasAttendance = attendanceRecord && Object.keys(attendanceRecord.records).length > 0;
             const colors = getWorkshopColorStyle(c.name);
             return (
               <li key={c.id} className="py-4">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-wrap justify-between items-center gap-4">
                   <div className="flex items-center">
-                     {hasPlan && <PencilSquareIcon className={`w-5 h-5 ${colors.icon} mr-3 flex-shrink-0`} title="Plano de aula preenchido" />}
+                     <div className="flex flex-col items-center mr-3 space-y-1">
+                        {hasPlan && <PencilSquareIcon className={`w-5 h-5 ${colors.icon}`} title="Plano de aula preenchido" />}
+                        {hasAttendance && <CheckCircleIcon className="w-5 h-5 text-green-500" title="Frequência preenchida" />}
+                     </div>
                     <div>
                       <p className={`font-semibold ${colors.text}`}>{c.name} - Aula {String(c.aulaNumber).padStart(2, '0')}</p>
                       <p className="text-sm text-on-surface-secondary">Prof. {c.teacher}</p>
                     </div>
                   </div>
-                  <div className="text-right flex items-center space-x-4">
-                     <div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                     <div className="text-right">
                         <p className="font-medium text-on-surface">{c.date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
                         <p className="text-sm text-on-surface-secondary">{c.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}</p>
                       </div>
+                      <button onClick={() => openAttendanceModal(c)} className="px-3 py-1.5 text-sm font-medium text-primary border border-primary rounded-md hover:bg-primary/10 transition-colors">
+                        {hasAttendance ? 'Ver/Editar' : 'Frequência'}
+                      </button>
                       <button onClick={() => openPlanModal(c)} className="px-3 py-1.5 text-sm font-medium text-secondary border border-secondary rounded-md hover:bg-secondary/10 transition-colors">
                         Planejar
                       </button>
@@ -192,6 +280,22 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan }) =
           </div>
         </div>
       </Modal>
+
+      {selectedClass && (
+        <Modal
+            isOpen={isAttendanceModalOpen}
+            onClose={() => setIsAttendanceModalOpen(false)}
+            title={`Frequência - ${selectedClass?.name} (${selectedClass?.date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })})`}
+        >
+            <AttendanceForm
+                students={studentsForSelectedClass}
+                initialRecords={currentAttendance?.records || {}}
+                onSave={handleSaveAttendance}
+                onCancel={() => setIsAttendanceModalOpen(false)}
+            />
+        </Modal>
+      )}
+
     </div>
   );
 };
