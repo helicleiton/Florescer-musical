@@ -148,8 +148,8 @@ export const Classes: React.FC<ClassesProps> = ({ classes, students, onAdd, onUp
             {classes.length > 0 ? classes.map((c) => (
               <tr key={c.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  <div>{new Date(c.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</div>
-                  <div className="text-xs text-gray-500">{new Date(c.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', timeZone: 'UTC'})}</div>
+                  <div>{new Date(c.date).toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})}</div>
+                  <div className="text-xs text-gray-500">{new Date(c.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', timeZone: 'America/Sao_Paulo'})}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.topic}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.teacher}</td>

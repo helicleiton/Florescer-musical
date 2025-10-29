@@ -6,14 +6,6 @@ export interface Student {
   registrationDate: string; // ISO string
 }
 
-export interface MusicClass {
-  id: string;
-  topic: string;
-  teacher: string;
-  date: string; // ISO string
-  studentIds: string[];
-}
-
 export interface Workshop {
   id: string;
   name: string;
@@ -22,6 +14,15 @@ export interface Workshop {
 export interface LessonPlan {
   classId: string;
   content: string;
+}
+
+// FIX: Added missing MusicClass interface.
+export interface MusicClass {
+  id: string;
+  topic: string;
+  teacher: string;
+  date: string; // ISO string
+  studentIds: string[];
 }
 
 export interface StudentNote {

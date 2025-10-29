@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import type { Student, MusicClass, StudentNote } from '../types';
+import type { Student, StudentNote } from '../types';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 import { DocumentTextIcon } from './icons/DocumentTextIcon';
 import { TrashIcon } from './icons/TrashIcon';
-import { CalendarIcon } from './icons/CalendarIcon';
 
 interface StudentProfileProps {
   student: Student;
-  classes: MusicClass[];
   notes: StudentNote[];
   onAddNote: (note: Omit<StudentNote, 'id'>) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
@@ -22,10 +20,8 @@ const InfoCard: React.FC<{title: string, value: string | number}> = ({title, val
     </div>
 );
 
-export const StudentProfile: React.FC<StudentProfileProps> = ({ student, classes, notes, onAddNote, onDeleteNote, onBack }) => {
+export const StudentProfile: React.FC<StudentProfileProps> = ({ student, notes, onAddNote, onDeleteNote, onBack }) => {
     const [newNote, setNewNote] = useState('');
-    const studentClasses = classes.filter(c => c.studentIds.includes(student.id))
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const handleAddNote = () => {
         if (newNote.trim()) {
@@ -56,35 +52,12 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, classes
                  <h3 className="text-xl font-semibold text-on-surface mb-4">Detalhes</h3>
                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6">
                      <InfoCard title="Idade" value={`${student.age} anos`} />
-                     <InfoCard title="Matrícula" value={new Date(student.registrationDate).toLocaleDateString('pt-BR')} />
+                     <InfoCard title="Matrícula" value={new Date(student.registrationDate).toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})} />
                      <InfoCard title="Oficina" value={student.workshopName || 'Nenhuma'} />
                  </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Classes Card */}
-                <div className="bg-surface p-6 rounded-lg shadow-sm">
-                    <h3 className="text-xl font-semibold text-on-surface mb-4 flex items-center">
-                        <CalendarIcon className="w-6 h-6 mr-2 text-on-surface-secondary" />
-                        Aulas Avulsas Inscritas
-                    </h3>
-                    {studentClasses.length > 0 ? (
-                        <ul className="divide-y divide-slate-200 max-h-96 overflow-y-auto pr-2">
-                            {studentClasses.map(c => (
-                                <li key={c.id} className="py-3">
-                                    <p className="font-medium text-primary">{c.topic}</p>
-                                    <div className="flex justify-between text-sm text-on-surface-secondary">
-                                        <span>Prof. {c.teacher}</span>
-                                        <span>{new Date(c.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</span>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-center text-on-surface-secondary py-8">Nenhuma aula avulsa encontrada.</p>
-                    )}
-                </div>
-
+            <div className="mt-6">
                 {/* Notes Card */}
                 <div className="bg-surface p-6 rounded-lg shadow-sm flex flex-col">
                     <h3 className="text-xl font-semibold text-on-surface mb-4 flex items-center">
@@ -96,7 +69,7 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, classes
                             <div key={note.id} className="bg-slate-50 p-3 rounded-md group relative">
                                 <p className="text-sm text-on-surface whitespace-pre-wrap">{note.content}</p>
                                 <div className="flex justify-between items-center mt-1">
-                                    <p className="text-xs text-on-surface-secondary">{new Date(note.date).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}</p>
+                                    <p className="text-xs text-on-surface-secondary">{new Date(note.date).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo'})}</p>
                                     <button onClick={() => onDeleteNote(note.id)} className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 p-1 rounded-full hover:bg-red-100">
                                         <TrashIcon className="w-4 h-4 text-red-500" />
                                     </button>

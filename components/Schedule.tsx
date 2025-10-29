@@ -17,8 +17,10 @@ interface FullClassInfo extends WeeklyClass {
     aulaNumber: number;
 }
 
-const courseStartDate = new Date('2025-11-01T00:00:00Z');
-const courseEndDate = new Date('2026-04-30T23:59:59Z');
+const SAO_PAULO_OFFSET_HOURS = 3;
+// As datas de início/fim do curso agora estão em UTC, representando o momento exato em São Paulo
+const courseStartDate = new Date('2025-11-01T03:00:00Z'); // Representa 00:00 de 1 de Nov em SP
+const courseEndDate = new Date('2026-05-01T02:59:59Z');   // Representa 23:59:59 de 30 de Abr em SP
 
 const getWorkshopColorStyle = (className: string) => {
   const lowerCaseName = className.toLowerCase();
@@ -44,7 +46,8 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan }) =
           const startTime = scheduleItem.time.split(' ')[0];
           const [hours, minutes] = startTime.split(':').map(Number);
           const classDate = new Date(currentDate);
-          classDate.setUTCHours(hours, minutes, 0, 0);
+          // Ajusta o horário para UTC, considerando que o horário da grade é de São Paulo (UTC-3)
+          classDate.setUTCHours(hours + SAO_PAULO_OFFSET_HOURS, minutes, 0, 0);
           
           classesRaw.push({
             id: `${scheduleItem.name}-${classDate.toISOString()}`,
@@ -118,8 +121,8 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan }) =
                   </div>
                   <div className="text-right flex items-center space-x-4">
                      <div>
-                        <p className="font-medium text-on-surface">{c.date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
-                        <p className="text-sm text-on-surface-secondary">{c.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}</p>
+                        <p className="font-medium text-on-surface">{c.date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
+                        <p className="text-sm text-on-surface-secondary">{c.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}</p>
                       </div>
                       <button onClick={() => openPlanModal(c)} className="px-3 py-1.5 text-sm font-medium text-secondary border border-secondary rounded-md hover:bg-secondary/10 transition-colors">
                         Planejar
@@ -173,7 +176,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan }) =
       <Modal 
         isOpen={isPlanModalOpen} 
         onClose={() => setIsPlanModalOpen(false)} 
-        title={`Planejamento - ${selectedClass?.name} (${selectedClass?.date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })})`}
+        title={`Planejamento - ${selectedClass?.name} (${selectedClass?.date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })})`}
       >
         <div>
           <textarea

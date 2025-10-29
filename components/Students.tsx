@@ -215,7 +215,7 @@ export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, o
                         <p className="text-sm text-gray-500">{student.age} anos</p>
                       </div>
                       <div className="text-sm text-gray-500 hidden sm:block mx-4">
-                         Matrícula: {new Date(student.registrationDate).toLocaleDateString('pt-BR')}
+                         Matrícula: {new Date(student.registrationDate).toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})}
                       </div>
                       <div className="flex-shrink-0 text-right text-sm font-medium space-x-4">
                         <button onClick={() => openEditModal(student)} className="text-secondary hover:text-secondary/80">Editar</button>

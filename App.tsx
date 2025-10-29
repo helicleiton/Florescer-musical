@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -6,7 +5,7 @@ import { Students } from './components/Students';
 import { Workshops } from './components/Instruments';
 import { Schedule } from './components/Schedule';
 import { StudentProfile } from './components/StudentProfile';
-import type { Student, MusicClass, Workshop, LessonPlan, StudentNote } from './types';
+import type { Student, Workshop, LessonPlan, StudentNote } from './types';
 import { MenuIcon } from './components/icons/MenuIcon';
 import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
 import { db } from './firebase/config';
@@ -33,7 +32,6 @@ function App() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   
   const [students, setStudents] = useState<Student[]>([]);
-  const [classes, setClasses] = useState<MusicClass[]>([]);
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [studentNotes, setStudentNotes] = useState<StudentNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,12 +57,6 @@ function App() {
       }, (error) => {
         console.error("Erro ao buscar alunos: ", error);
         setLoading(false); // Desativa o loading mesmo se der erro
-      }));
-
-      const qClasses = query(collection(db, 'classes'), orderBy('date', 'desc'));
-      unsubs.push(onSnapshot(qClasses, (querySnapshot) => {
-        const classesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MusicClass));
-        setClasses(classesData);
       }));
       
       unsubs.push(onSnapshot(collection(db, 'lessonPlans'), (querySnapshot) => {
@@ -163,7 +155,6 @@ function App() {
         }
         return <StudentProfile 
                     student={student}
-                    classes={classes}
                     notes={studentNotes.filter(n => n.studentId === selectedStudentId)}
                     onAddNote={addStudentNote}
                     onDeleteNote={deleteStudentNote}
@@ -175,7 +166,6 @@ function App() {
       case 'dashboard':
         return <Dashboard 
                   students={students} 
-                  classes={classes} 
                   workshops={derivedWorkshops} 
                 />;
       case 'students':
@@ -196,7 +186,6 @@ function App() {
       default:
         return <Dashboard 
                   students={students} 
-                  classes={classes} 
                   workshops={derivedWorkshops} 
                 />;
     }
