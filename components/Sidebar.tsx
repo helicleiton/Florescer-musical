@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { MusicalNoteIcon } from './icons/MusicalNoteIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
@@ -5,7 +6,7 @@ import { CalendarIcon } from './icons/CalendarIcon';
 import { DashboardIcon } from './icons/DashboardIcon';
 import { ClipboardDocumentListIcon } from './icons/ClipboardDocumentListIcon';
 
-type View = 'dashboard' | 'students' | 'classes' | 'workshops' | 'schedule';
+type View = 'dashboard' | 'students' | 'workshops' | 'schedule';
 
 interface SidebarProps {
   currentView: View;
@@ -79,12 +80,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, i
             label="Horário"
             isActive={currentView === 'schedule'}
             onClick={() => handleNavClick('schedule')}
-          />
-          <NavItem
-            icon={<ClipboardDocumentListIcon />}
-            label="Aulas Avulsas"
-            isActive={currentView === 'classes'}
-            onClick={() => handleNavClick('classes')}
           />
         </nav>
         <div className="mt-auto text-center">

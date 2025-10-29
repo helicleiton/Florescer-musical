@@ -1,9 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Students } from './components/Students';
 import { Workshops } from './components/Instruments';
-import { Classes } from './components/Classes';
 import { Schedule } from './components/Schedule';
 import { StudentProfile } from './components/StudentProfile';
 import type { Student, MusicClass, Workshop, LessonPlan, StudentNote } from './types';
@@ -14,7 +14,7 @@ import { collection, onSnapshot, doc, addDoc, setDoc, deleteDoc, query, orderBy,
 import { weeklySchedule } from './data/schedule';
 import { initialStudents } from './data/initialStudents';
 
-type View = 'dashboard' | 'students' | 'classes' | 'workshops' | 'schedule';
+type View = 'dashboard' | 'students' | 'workshops' | 'schedule';
 
 const SEED_FLAG = 'initial_seed_complete_v2'; // Flag to ensure seeding happens only once
 
@@ -129,17 +129,6 @@ function App() {
     await deleteDoc(doc(db, 'students', id));
   };
 
-  const addClass = async (classData: Omit<MusicClass, 'id'>) => {
-    await addDoc(collection(db, 'classes'), classData);
-  };
-  const updateClass = async (classData: MusicClass) => {
-    const classRef = doc(db, 'classes', classData.id);
-    await setDoc(classRef, classData, { merge: true });
-  };
-  const deleteClass = async (id: string) => {
-    await deleteDoc(doc(db, 'classes', id));
-  };
-
   const saveLessonPlan = async (lessonPlan: LessonPlan) => {
     // Usamos classId como ID do documento para facilitar a busca
     await setDoc(doc(db, 'lessonPlans', lessonPlan.classId), lessonPlan);
@@ -201,14 +190,6 @@ function App() {
         return <Workshops 
                   workshops={derivedWorkshops} 
                   students={students} 
-                />;
-      case 'classes':
-        return <Classes 
-                  classes={classes} 
-                  students={students} 
-                  onAdd={addClass}
-                  onUpdate={updateClass}
-                  onDelete={deleteClass}
                 />;
       case 'schedule':
         return <Schedule lessonPlans={lessonPlans} onSavePlan={saveLessonPlan} />;
