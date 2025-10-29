@@ -45,7 +45,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, classes, worksho
     );
   }
 
-  const studentsInWorkshops = students.filter(s => s.workshopId !== null).length;
+  const studentsInWorkshops = students.filter(s => s.workshopName).length;
   const upcomingClasses = classes
     .filter(c => new Date(c.date) >= new Date())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())

@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import type { Student, Workshop } from '../types';
+import type { Student } from '../types';
 import { Modal } from './Modal';
 import { weeklySchedule, dayNames } from '../data/schedule';
 
 interface StudentsProps {
   students: Student[];
-  workshops: Workshop[];
   onAdd: (studentData: Omit<Student, 'id' | 'registrationDate'>) => Promise<void>;
   onUpdate: (studentData: Student) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -16,22 +15,15 @@ const StudentForm: React.FC<{
   student: Partial<Student> | null;
   onSave: (student: Omit<Student, 'id'> & { id?: string }) => void;
   onCancel: () => void;
-  workshops: Workshop[];
-}> = ({ student, onSave, onCancel, workshops }) => {
+}> = ({ student, onSave, onCancel }) => {
   const [name, setName] = useState(student?.name || '');
   const [age, setAge] = useState(student?.age || 0);
-  
-  // Encontra o nome da oficina inicial a partir do ID do aluno
-  const initialWorkshopName = workshops.find(w => w.id === student?.workshopId)?.name ?? '';
-  const [selectedWorkshopName, setSelectedWorkshopName] = useState(initialWorkshopName);
+  const [workshopName, setWorkshopName] = useState(student?.workshopName || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && age > 0) {
-      // Encontra a oficina pelo nome para obter seu ID para salvar
-      const targetWorkshop = workshops.find(w => w.name === selectedWorkshopName);
-      const workshopIdToSave = targetWorkshop ? targetWorkshop.id : null;
-      onSave({ ...(student || {}), name, age, workshopId: workshopIdToSave });
+      onSave({ ...(student || {}), name, age, workshopName: workshopName });
     }
   };
 
@@ -58,8 +50,8 @@ const StudentForm: React.FC<{
         <label htmlFor="workshop" className="block text-sm font-medium text-gray-700">Oficina / Turma</label>
         <select 
           id="workshop" 
-          value={selectedWorkshopName} 
-          onChange={(e) => setSelectedWorkshopName(e.target.value)} 
+          value={workshopName} 
+          onChange={(e) => setWorkshopName(e.target.value)} 
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
         >
           <option value="">Nenhuma - Aluno Avulso</option>
@@ -77,7 +69,7 @@ const StudentForm: React.FC<{
   );
 };
 
-export const Students: React.FC<StudentsProps> = ({ students, workshops, onAdd, onUpdate, onDelete, onSelectStudent }) => {
+export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, onDelete, onSelectStudent }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
@@ -114,11 +106,6 @@ export const Students: React.FC<StudentsProps> = ({ students, workshops, onAdd, 
     setIsModalOpen(true);
   };
   
-  const getWorkshopName = (id: string | null) => {
-    if (!id) return 'N/A';
-    return workshops.find(w => w.id === id)?.name || 'Desconhecido';
-  }
-
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
@@ -153,7 +140,7 @@ export const Students: React.FC<StudentsProps> = ({ students, workshops, onAdd, 
                   </button>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.age}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getWorkshopName(student.workshopId)}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.workshopName || 'N/A'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(student.registrationDate).toLocaleDateString('pt-BR')}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                   <button onClick={() => openEditModal(student)} className="text-secondary hover:text-secondary/80">Editar</button>
@@ -174,7 +161,6 @@ export const Students: React.FC<StudentsProps> = ({ students, workshops, onAdd, 
           student={editingStudent}
           onSave={editingStudent ? handleEditStudent : handleAddStudent}
           onCancel={() => { setIsModalOpen(false); setEditingStudent(null); }}
-          workshops={workshops}
         />
       </Modal>
     </div>

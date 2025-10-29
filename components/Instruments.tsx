@@ -33,8 +33,8 @@ export const Workshops: React.FC<WorkshopsProps> = ({ workshops, students }) => 
       {workshops.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {workshops.map((workshop) => {
-            const workshopClasses = weeklySchedule.filter(c => c.name.toLowerCase().includes(workshop.name.toLowerCase()));
-            const workshopStudents = students.filter(s => s.workshopId === workshop.id);
+            const workshopClasses = weeklySchedule.filter(c => c.name.startsWith(workshop.name));
+            const workshopStudents = students.filter(s => s.workshopName && s.workshopName.startsWith(workshop.name));
             const colors = getWorkshopColorStyle(workshop.name);
 
             return (

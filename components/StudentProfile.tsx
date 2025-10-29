@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Student, Workshop, MusicClass, StudentNote } from '../types';
+import type { Student, MusicClass, StudentNote } from '../types';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 import { DocumentTextIcon } from './icons/DocumentTextIcon';
@@ -8,7 +8,6 @@ import { CalendarIcon } from './icons/CalendarIcon';
 
 interface StudentProfileProps {
   student: Student;
-  workshops: Workshop[];
   classes: MusicClass[];
   notes: StudentNote[];
   onAddNote: (note: Omit<StudentNote, 'id'>) => Promise<void>;
@@ -23,9 +22,8 @@ const InfoCard: React.FC<{title: string, value: string | number}> = ({title, val
     </div>
 );
 
-export const StudentProfile: React.FC<StudentProfileProps> = ({ student, workshops, classes, notes, onAddNote, onDeleteNote, onBack }) => {
+export const StudentProfile: React.FC<StudentProfileProps> = ({ student, classes, notes, onAddNote, onDeleteNote, onBack }) => {
     const [newNote, setNewNote] = useState('');
-    const workshop = workshops.find(w => w.id === student.workshopId);
     const studentClasses = classes.filter(c => c.studentIds.includes(student.id))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -59,7 +57,7 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, worksho
                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6">
                      <InfoCard title="Idade" value={`${student.age} anos`} />
                      <InfoCard title="Matrícula" value={new Date(student.registrationDate).toLocaleDateString('pt-BR')} />
-                     <InfoCard title="Oficina" value={workshop?.name || 'Nenhuma'} />
+                     <InfoCard title="Oficina" value={student.workshopName || 'Nenhuma'} />
                  </div>
             </div>
 

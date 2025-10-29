@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Students } from './components/Students';
@@ -10,10 +10,19 @@ import type { Student, MusicClass, Workshop, LessonPlan, StudentNote } from './t
 import { MenuIcon } from './components/icons/MenuIcon';
 import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
 import { db } from './firebase/config';
-import { collection, onSnapshot, doc, addDoc, setDoc, deleteDoc, query, orderBy, writeBatch, DocumentReference } from 'firebase/firestore';
+import { collection, onSnapshot, doc, addDoc, setDoc, deleteDoc, query, orderBy, writeBatch } from 'firebase/firestore';
 import { weeklySchedule } from './data/schedule';
 
 type View = 'dashboard' | 'students' | 'classes' | 'workshops' | 'schedule';
+
+const getWorkshopNameFromClassName = (className: string): string => {
+  const parts = className.split(' ');
+  // Verifica se a última parte é uma letra maiúscula única (ex: "A", "B")
+  if (parts.length > 1 && /^[A-Z]$/.test(parts[parts.length - 1])) {
+    return parts.slice(0, -1).join(' ');
+  }
+  return className;
+};
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -21,11 +30,18 @@ function App() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   
   const [students, setStudents] = useState<Student[]>([]);
-  const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [classes, setClasses] = useState<MusicClass[]>([]);
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [studentNotes, setStudentNotes] = useState<StudentNote[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const derivedWorkshops: Workshop[] = useMemo(() => {
+    const workshopNames = new Set(weeklySchedule.map(c => getWorkshopNameFromClassName(c.name)));
+    return Array.from(workshopNames).map(name => ({
+        id: name.toLowerCase().replace(/\s/g, '-'),
+        name: name
+    })).sort((a,b) => a.name.localeCompare(b.name));
+  }, []);
 
   // --- Efeitos para ouvir as coleções do Firestore em tempo real ---
   useEffect(() => {
@@ -37,12 +53,6 @@ function App() {
     }, (error) => {
       console.error("Erro ao buscar alunos: ", error);
       setLoading(false); // Desativa o loading mesmo se der erro
-    });
-
-    const qWorkshops = query(collection(db, 'workshops'), orderBy('name', 'asc'));
-    const unsubscribeWorkshops = onSnapshot(qWorkshops, (querySnapshot) => {
-      const workshopsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Workshop));
-      setWorkshops(workshopsData);
     });
 
     const qClasses = query(collection(db, 'classes'), orderBy('date', 'desc'));
@@ -65,7 +75,6 @@ function App() {
     // Limpa os listeners ao desmontar o componente
     return () => {
       unsubscribeStudents();
-      unsubscribeWorkshops();
       unsubscribeClasses();
       unsubscribeLessonPlans();
       unsubscribeNotes();
@@ -114,36 +123,27 @@ function App() {
     try {
       const batch = writeBatch(db);
 
-      // Create workshops from the central schedule
-      const workshopNames = [...new Set(weeklySchedule.map(item => item.name))];
-      const workshopRefs: { [key: string]: DocumentReference } = {};
-      for (const name of workshopNames) {
-          const workshopRef = doc(collection(db, 'workshops'));
-          batch.set(workshopRef, { name });
-          workshopRefs[name] = workshopRef;
-      }
-
       // Sample Students
       const student1Ref = doc(collection(db, 'students'));
-      batch.set(student1Ref, { name: 'Ana Silva', age: 12, workshopId: workshopRefs['Violão A'].id, registrationDate: new Date().toISOString() });
+      batch.set(student1Ref, { name: 'Ana Silva', age: 12, workshopName: 'Violão A', registrationDate: new Date().toISOString() });
       
       const student2Ref = doc(collection(db, 'students'));
-      batch.set(student2Ref, { name: 'Bruno Costa', age: 10, workshopId: workshopRefs['Teclado B'].id, registrationDate: new Date().toISOString() });
+      batch.set(student2Ref, { name: 'Bruno Costa', age: 10, workshopName: 'Teclado B', registrationDate: new Date().toISOString() });
       
       const student3Ref = doc(collection(db, 'students'));
-      batch.set(student3Ref, { name: 'Carla Dias', age: 8, workshopId: workshopRefs['Musicalização Infantil A'].id, registrationDate: new Date().toISOString() });
+      batch.set(student3Ref, { name: 'Carla Dias', age: 8, workshopName: 'Musicalização Infantil A', registrationDate: new Date().toISOString() });
 
       const student4Ref = doc(collection(db, 'students'));
-      batch.set(student4Ref, { name: 'Daniel Faria', age: 14, workshopId: null, registrationDate: new Date().toISOString() });
+      batch.set(student4Ref, { name: 'Daniel Faria', age: 14, workshopName: null, registrationDate: new Date().toISOString() });
 
       const student5Ref = doc(collection(db, 'students'));
-      batch.set(student5Ref, { name: 'Elisa Gomes', age: 15, workshopId: workshopRefs['Técnica Vocal'].id, registrationDate: new Date().toISOString() });
+      batch.set(student5Ref, { name: 'Elisa Gomes', age: 15, workshopName: 'Técnica Vocal', registrationDate: new Date().toISOString() });
       
       const student6Ref = doc(collection(db, 'students'));
-      batch.set(student6Ref, { name: 'Felipe Mendes', age: 13, workshopId: workshopRefs['Violão C'].id, registrationDate: new Date().toISOString() });
+      batch.set(student6Ref, { name: 'Felipe Mendes', age: 13, workshopName: 'Violão C', registrationDate: new Date().toISOString() });
 
       const student7Ref = doc(collection(db, 'students'));
-      batch.set(student7Ref, { name: 'Gabriela Lima', age: 11, workshopId: workshopRefs['Teclado D'].id, registrationDate: new Date().toISOString() });
+      batch.set(student7Ref, { name: 'Gabriela Lima', age: 11, workshopName: 'Teclado D', registrationDate: new Date().toISOString() });
 
       // Sample Classes
       const classDate = new Date();
@@ -188,7 +188,6 @@ function App() {
         }
         return <StudentProfile 
                     student={student}
-                    workshops={workshops}
                     classes={classes}
                     notes={studentNotes.filter(n => n.studentId === selectedStudentId)}
                     onAddNote={addStudentNote}
@@ -196,20 +195,21 @@ function App() {
                     onBack={handleBackToStudents}
                 />;
     }
+    
+    const showSeedButton = !loading && students.length === 0 && classes.length === 0;
 
     switch (currentView) {
       case 'dashboard':
         return <Dashboard 
                   students={students} 
                   classes={classes} 
-                  workshops={workshops} 
+                  workshops={derivedWorkshops} 
                   onSeedDatabase={seedDatabase}
-                  showSeedButton={!loading && students.length === 0 && workshops.length === 0 && classes.length === 0}
+                  showSeedButton={showSeedButton}
                 />;
       case 'students':
         return <Students 
                   students={students} 
-                  workshops={workshops} 
                   onAdd={addStudent} 
                   onUpdate={updateStudent} 
                   onDelete={deleteStudent} 
@@ -217,7 +217,7 @@ function App() {
                 />;
       case 'workshops':
         return <Workshops 
-                  workshops={workshops} 
+                  workshops={derivedWorkshops} 
                   students={students} 
                 />;
       case 'classes':
@@ -234,9 +234,9 @@ function App() {
         return <Dashboard 
                   students={students} 
                   classes={classes} 
-                  workshops={workshops} 
+                  workshops={derivedWorkshops} 
                   onSeedDatabase={seedDatabase}
-                  showSeedButton={!loading && students.length === 0 && workshops.length === 0 && classes.length === 0}
+                  showSeedButton={showSeedButton}
                 />;
     }
   };

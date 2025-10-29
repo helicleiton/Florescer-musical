@@ -2,7 +2,7 @@ export interface Student {
   id: string;
   name: string;
   age: number;
-  workshopId: string | null;
+  workshopName: string | null;
   registrationDate: string; // ISO string
 }
 
