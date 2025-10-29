@@ -4,7 +4,7 @@
 // 3. Copie o objeto de configuração (firebaseConfig) e cole abaixo.
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBKKYoTFlTc3reOn8zKwTj9C3ucrQI3s_c",
@@ -18,15 +18,8 @@ const firebaseConfig = {
 // Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
 
-// Inicializa o Cloud Firestore e obtém uma referência para o serviço
-export const db = getFirestore(app);
-
-// Ativa a persistência offline
-enableIndexedDbPersistence(db)
-  .catch((err) => {
-    if (err.code == 'failed-precondition') {
-      console.warn('Persistência offline falhou: Múltiplas abas abertas.');
-    } else if (err.code == 'unimplemented') {
-      console.warn('Persistência offline não suportada neste navegador.');
-    }
-  });
+// Inicializa o Cloud Firestore com persistência offline ativada (método moderno)
+// Isso resolve o aviso de "deprecation" e gerencia a persistência em múltiplas abas.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+});

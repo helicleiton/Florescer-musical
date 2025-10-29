@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import type { Student } from '../types';
 import { Modal } from './Modal';
 import { weeklySchedule, dayNames } from '../data/schedule';
+import { SearchIcon } from './icons/SearchIcon';
 
 interface StudentsProps {
   students: Student[];
@@ -72,6 +73,16 @@ const StudentForm: React.FC<{
 export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, onDelete, onSelectStudent }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm) {
+      return students;
+    }
+    return students.filter(student =>
+      student.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [students, searchTerm]);
 
   const handleAddStudent = (studentData: Omit<Student, 'id' | 'registrationDate'>) => {
     const newStudentData = {
@@ -112,48 +123,67 @@ export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, o
         <h2 className="text-3xl font-bold text-on-surface">Alunos</h2>
         <button onClick={openAddModal} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
           Adicionar Aluno
         </button>
       </div>
 
+      <div className="mb-6">
+        <div className="relative">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+            <SearchIcon className="w-5 h-5 text-gray-400" />
+          </span>
+          <input
+            type="text"
+            placeholder="Buscar por nome..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm"
+          />
+        </div>
+      </div>
+
       <div className="bg-surface rounded-lg shadow-sm overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Idade</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Oficina</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matrícula</th>
-              <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">Ações</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {students.length > 0 ? students.map((student) => (
-              <tr key={student.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  <button onClick={() => onSelectStudent(student.id)} className="text-primary hover:underline font-medium text-left">
-                    {student.name}
-                  </button>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.age}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.workshopName || 'N/A'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(student.registrationDate).toLocaleDateString('pt-BR')}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                  <button onClick={() => openEditModal(student)} className="text-secondary hover:text-secondary/80">Editar</button>
-                  <button onClick={() => handleDeleteStudent(student.id)} className="text-red-600 hover:text-red-800">Remover</button>
-                </td>
-              </tr>
-            )) : (
+        <div className="overflow-auto max-h-[calc(100vh-20rem)]">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0">
               <tr>
-                <td colSpan={5} className="text-center py-10 text-gray-500">Nenhum aluno cadastrado.</td>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Idade</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Oficina</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matrícula</th>
+                <th scope="col" className="relative px-6 py-3">
+                  <span className="sr-only">Ações</span>
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredStudents.length > 0 ? filteredStudents.map((student) => (
+                <tr key={student.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <button onClick={() => onSelectStudent(student.id)} className="text-primary hover:underline font-medium text-left">
+                      {student.name}
+                    </button>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.age}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.workshopName || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(student.registrationDate).toLocaleDateString('pt-BR')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <button onClick={() => openEditModal(student)} className="text-secondary hover:text-secondary/80">Editar</button>
+                    <button onClick={() => handleDeleteStudent(student.id)} className="text-red-600 hover:text-red-800">Remover</button>
+                  </td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={5} className="text-center py-10 text-gray-500">
+                    {students.length > 0 ? 'Nenhum aluno encontrado com este nome.' : 'Nenhum aluno cadastrado.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingStudent ? "Editar Aluno" : "Adicionar Aluno"}>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Student, MusicClass, Workshop } from '../types';
 import { UserGroupIcon } from './icons/UserGroupIcon';
@@ -8,8 +9,6 @@ interface DashboardProps {
   students: Student[];
   classes: MusicClass[];
   workshops: Workshop[];
-  onSeedDatabase: () => void;
-  showSeedButton: boolean;
 }
 
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string | number; color: string }> = ({ icon, label, value, color }) => (
@@ -24,27 +23,7 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string |
   </div>
 );
 
-export const Dashboard: React.FC<DashboardProps> = ({ students, classes, workshops, onSeedDatabase, showSeedButton }) => {
-  if (showSeedButton) {
-    return (
-      <div className="p-8 h-full flex flex-col items-center justify-center text-center">
-        <div className="p-4 mb-4 text-white rounded-full bg-primary">
-            <MusicalNoteIcon className="w-10 h-10" />
-        </div>
-        <h2 className="text-3xl font-bold text-on-surface mb-4">Bem-vindo ao Florescer Musical!</h2>
-        <p className="max-w-md text-on-surface-secondary mb-8">
-          Seu banco de dados está pronto, mas parece vazio. Clique no botão abaixo para adicionar alguns dados de exemplo e ver o aplicativo em ação.
-        </p>
-        <button
-          onClick={onSeedDatabase}
-          className="px-6 py-3 font-semibold text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-focus transition-all"
-        >
-          Inserir Dados de Exemplo
-        </button>
-      </div>
-    );
-  }
-
+export const Dashboard: React.FC<DashboardProps> = ({ students, classes, workshops }) => {
   const studentsInWorkshops = students.filter(s => s.workshopName).length;
   const upcomingClasses = classes
     .filter(c => new Date(c.date) >= new Date())

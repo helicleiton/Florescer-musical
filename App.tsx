@@ -10,10 +10,13 @@ import type { Student, MusicClass, Workshop, LessonPlan, StudentNote } from './t
 import { MenuIcon } from './components/icons/MenuIcon';
 import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
 import { db } from './firebase/config';
-import { collection, onSnapshot, doc, addDoc, setDoc, deleteDoc, query, orderBy, writeBatch } from 'firebase/firestore';
+import { collection, onSnapshot, doc, addDoc, setDoc, deleteDoc, query, orderBy, writeBatch, getDocs } from 'firebase/firestore';
 import { weeklySchedule } from './data/schedule';
+import { initialStudents } from './data/initialStudents';
 
 type View = 'dashboard' | 'students' | 'classes' | 'workshops' | 'schedule';
+
+const SEED_FLAG = 'initial_seed_complete_v2'; // Flag to ensure seeding happens only once
 
 const getWorkshopNameFromClassName = (className: string): string => {
   const parts = className.split(' ');
@@ -45,39 +48,72 @@ function App() {
 
   // --- Efeitos para ouvir as coleções do Firestore em tempo real ---
   useEffect(() => {
-    const qStudents = query(collection(db, 'students'), orderBy('name', 'asc'));
-    const unsubscribeStudents = onSnapshot(qStudents, (querySnapshot) => {
-      const studentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
-      setStudents(studentsData);
-      setLoading(false); // Desativa o loading quando os dados chegam
-    }, (error) => {
-      console.error("Erro ao buscar alunos: ", error);
-      setLoading(false); // Desativa o loading mesmo se der erro
-    });
+    const unsubs: (() => void)[] = [];
 
-    const qClasses = query(collection(db, 'classes'), orderBy('date', 'desc'));
-    const unsubscribeClasses = onSnapshot(qClasses, (querySnapshot) => {
-      const classesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MusicClass));
-      setClasses(classesData);
-    });
-    
-    const unsubscribeLessonPlans = onSnapshot(collection(db, 'lessonPlans'), (querySnapshot) => {
-      const lessonPlansData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as LessonPlan));
-      setLessonPlans(lessonPlansData);
-    });
-    
-    const qNotes = query(collection(db, 'studentNotes'), orderBy('date', 'desc'));
-    const unsubscribeNotes = onSnapshot(qNotes, (querySnapshot) => {
-        const notesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentNote));
-        setStudentNotes(notesData);
-    });
+    const setupListeners = () => {
+      const qStudents = query(collection(db, 'students'), orderBy('name', 'asc'));
+      unsubs.push(onSnapshot(qStudents, (querySnapshot) => {
+        const studentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+        setStudents(studentsData);
+        setLoading(false); // Desativa o loading quando os dados chegam
+      }, (error) => {
+        console.error("Erro ao buscar alunos: ", error);
+        setLoading(false); // Desativa o loading mesmo se der erro
+      }));
+
+      const qClasses = query(collection(db, 'classes'), orderBy('date', 'desc'));
+      unsubs.push(onSnapshot(qClasses, (querySnapshot) => {
+        const classesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MusicClass));
+        setClasses(classesData);
+      }));
+      
+      unsubs.push(onSnapshot(collection(db, 'lessonPlans'), (querySnapshot) => {
+        const lessonPlansData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as LessonPlan));
+        setLessonPlans(lessonPlansData);
+      }));
+      
+      const qNotes = query(collection(db, 'studentNotes'), orderBy('date', 'desc'));
+      unsubs.push(onSnapshot(qNotes, (querySnapshot) => {
+          const notesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentNote));
+          setStudentNotes(notesData);
+      }));
+    };
+
+    const initializeData = async () => {
+      if (localStorage.getItem(SEED_FLAG) !== 'true') {
+        setLoading(true);
+        const studentsCollectionRef = collection(db, 'students');
+        const snapshot = await getDocs(studentsCollectionRef);
+
+        if (snapshot.docs.length !== initialStudents.length) {
+          console.warn(`Inconsistência de dados detectada (${snapshot.docs.length} vs ${initialStudents.length}). Restaurando a lista de alunos...`);
+          
+          try {
+            const batch = writeBatch(db);
+            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+            initialStudents.forEach(student => {
+              const studentRef = doc(collection(db, 'students'));
+              batch.set(studentRef, {
+                ...student,
+                registrationDate: new Date().toISOString()
+              });
+            });
+            await batch.commit();
+            console.log("Lista de alunos restaurada com sucesso.");
+          } catch (error) {
+            console.error("Erro ao restaurar a lista de alunos: ", error);
+          }
+        }
+        localStorage.setItem(SEED_FLAG, 'true');
+      }
+      setupListeners();
+    };
+
+    initializeData();
 
     // Limpa os listeners ao desmontar o componente
     return () => {
-      unsubscribeStudents();
-      unsubscribeClasses();
-      unsubscribeLessonPlans();
-      unsubscribeNotes();
+      unsubs.forEach(unsub => unsub());
     };
   }, []);
 
@@ -115,56 +151,6 @@ function App() {
   const deleteStudentNote = async (id: string) => {
       await deleteDoc(doc(db, 'studentNotes', id));
   };
-
-  const seedDatabase = async () => {
-    if (!window.confirm("Isso irá apagar os dados existentes e inserir dados de exemplo no banco de dados. Deseja continuar?")) return;
-    
-    setLoading(true);
-    try {
-      const batch = writeBatch(db);
-
-      // Sample Students
-      const student1Ref = doc(collection(db, 'students'));
-      batch.set(student1Ref, { name: 'Ana Silva', age: 12, workshopName: 'Violão A', registrationDate: new Date().toISOString() });
-      
-      const student2Ref = doc(collection(db, 'students'));
-      batch.set(student2Ref, { name: 'Bruno Costa', age: 10, workshopName: 'Teclado B', registrationDate: new Date().toISOString() });
-      
-      const student3Ref = doc(collection(db, 'students'));
-      batch.set(student3Ref, { name: 'Carla Dias', age: 8, workshopName: 'Musicalização Infantil A', registrationDate: new Date().toISOString() });
-
-      const student4Ref = doc(collection(db, 'students'));
-      batch.set(student4Ref, { name: 'Daniel Faria', age: 14, workshopName: null, registrationDate: new Date().toISOString() });
-
-      const student5Ref = doc(collection(db, 'students'));
-      batch.set(student5Ref, { name: 'Elisa Gomes', age: 15, workshopName: 'Técnica Vocal', registrationDate: new Date().toISOString() });
-      
-      const student6Ref = doc(collection(db, 'students'));
-      batch.set(student6Ref, { name: 'Felipe Mendes', age: 13, workshopName: 'Violão C', registrationDate: new Date().toISOString() });
-
-      const student7Ref = doc(collection(db, 'students'));
-      batch.set(student7Ref, { name: 'Gabriela Lima', age: 11, workshopName: 'Teclado D', registrationDate: new Date().toISOString() });
-
-      // Sample Classes
-      const classDate = new Date();
-      classDate.setDate(classDate.getDate() + 7);
-      const class1Ref = doc(collection(db, 'classes'));
-      batch.set(class1Ref, { topic: 'Introdução a Acordes Maiores', teacher: 'Helicleiton', date: classDate.toISOString(), studentIds: [student1Ref.id, student4Ref.id] });
-      
-      const class2Date = new Date();
-      class2Date.setDate(class2Date.getDate() + 10);
-      const class2Ref = doc(collection(db, 'classes'));
-      batch.set(class2Ref, { topic: 'Leitura de Partituras', teacher: 'Karla Silva', date: class2Date.toISOString(), studentIds: [student3Ref.id, student7Ref.id] });
-
-      await batch.commit();
-      alert('Dados de exemplo inseridos com sucesso!');
-    } catch (error) {
-      console.error("Erro ao inserir dados de exemplo: ", error);
-      alert("Ocorreu um erro ao inserir os dados. Verifique o console.");
-    } finally {
-      setLoading(false);
-    }
-  };
   
   const handleSelectStudent = (id: string) => {
     setSelectedStudentId(id);
@@ -195,8 +181,6 @@ function App() {
                     onBack={handleBackToStudents}
                 />;
     }
-    
-    const showSeedButton = !loading && students.length === 0 && classes.length === 0;
 
     switch (currentView) {
       case 'dashboard':
@@ -204,8 +188,6 @@ function App() {
                   students={students} 
                   classes={classes} 
                   workshops={derivedWorkshops} 
-                  onSeedDatabase={seedDatabase}
-                  showSeedButton={showSeedButton}
                 />;
       case 'students':
         return <Students 
@@ -235,8 +217,6 @@ function App() {
                   students={students} 
                   classes={classes} 
                   workshops={derivedWorkshops} 
-                  onSeedDatabase={seedDatabase}
-                  showSeedButton={showSeedButton}
                 />;
     }
   };
