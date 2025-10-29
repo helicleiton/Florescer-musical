@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { Workshop, Student } from '../types';
 import { Modal } from './Modal';
@@ -35,8 +34,10 @@ const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', '
 
 interface WorkshopsProps {
   workshops: Workshop[];
-  setWorkshops: React.Dispatch<React.SetStateAction<Workshop[]>>;
   students: Student[];
+  onAdd: (workshopData: Omit<Workshop, 'id'>) => Promise<void>;
+  onUpdate: (workshopData: Workshop) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
 const WorkshopForm: React.FC<{
@@ -75,22 +76,20 @@ const getWorkshopColorStyle = (workshopName: string) => {
   return { text: 'text-primary', border: 'border-primary' }; // Musicalização
 };
 
-export const Workshops: React.FC<WorkshopsProps> = ({ workshops, setWorkshops, students }) => {
+export const Workshops: React.FC<WorkshopsProps> = ({ workshops, students, onAdd, onUpdate, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWorkshop, setEditingWorkshop] = useState<Workshop | null>(null);
   const [expandedWorkshopId, setExpandedWorkshopId] = useState<string | null>(null);
 
   const handleAddWorkshop = (workshopData: Omit<Workshop, 'id'>) => {
-    const newWorkshop: Workshop = {
-      ...workshopData,
-      id: crypto.randomUUID(),
-    };
-    setWorkshops(prev => [...prev, newWorkshop].sort((a,b) => a.name.localeCompare(b.name)));
+    onAdd(workshopData);
     setIsModalOpen(false);
   };
 
   const handleEditWorkshop = (workshopData: Omit<Workshop, 'id'> & { id?: string }) => {
-    setWorkshops(prev => prev.map(w => (w.id === workshopData.id ? { ...w, ...workshopData } : w)).sort((a,b) => a.name.localeCompare(b.name)));
+    if (editingWorkshop) {
+      onUpdate({ ...editingWorkshop, ...workshopData } as Workshop);
+    }
     setEditingWorkshop(null);
     setIsModalOpen(false);
   };
@@ -101,7 +100,7 @@ export const Workshops: React.FC<WorkshopsProps> = ({ workshops, setWorkshops, s
         return;
     }
     if (window.confirm("Tem certeza que deseja remover esta oficina?")) {
-      setWorkshops(prev => prev.filter(w => w.id !== id));
+      onDelete(id);
     }
   };
 

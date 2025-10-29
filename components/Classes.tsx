@@ -4,8 +4,10 @@ import { Modal } from './Modal';
 
 interface ClassesProps {
   classes: MusicClass[];
-  setClasses: React.Dispatch<React.SetStateAction<MusicClass[]>>;
   students: Student[];
+  onAdd: (classData: Omit<MusicClass, 'id'>) => Promise<void>;
+  onUpdate: (classData: MusicClass) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
 const ClassForm: React.FC<{
@@ -82,28 +84,26 @@ const ClassForm: React.FC<{
 };
 
 
-export const Classes: React.FC<ClassesProps> = ({ classes, setClasses, students }) => {
+export const Classes: React.FC<ClassesProps> = ({ classes, students, onAdd, onUpdate, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<MusicClass | null>(null);
 
   const handleAddClass = (classData: Omit<MusicClass, 'id'>) => {
-    const newClass: MusicClass = {
-      ...classData,
-      id: crypto.randomUUID(),
-    };
-    setClasses(prev => [...prev, newClass].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    onAdd(classData);
     setIsModalOpen(false);
   };
 
   const handleEditClass = (classData: Omit<MusicClass, 'id'> & { id?: string }) => {
-    setClasses(prev => prev.map(c => (c.id === classData.id ? { ...c, ...classData } as MusicClass : c)).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    if (editingClass) {
+      onUpdate({ ...editingClass, ...classData } as MusicClass);
+    }
     setEditingClass(null);
     setIsModalOpen(false);
   };
   
   const handleDeleteClass = (id: string) => {
     if (window.confirm("Tem certeza que deseja remover esta aula?")) {
-      setClasses(prev => prev.filter(c => c.id !== id));
+      onDelete(id);
     }
   };
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import type { LessonPlan } from '../types';
 import { Modal } from './Modal';
@@ -6,7 +5,7 @@ import { PencilSquareIcon } from './icons/PencilSquareIcon';
 
 interface ScheduleProps {
   lessonPlans: LessonPlan[];
-  setLessonPlans: React.Dispatch<React.SetStateAction<LessonPlan[]>>;
+  onSavePlan: (plan: LessonPlan) => Promise<void>;
 }
 
 interface WeeklyClass {
@@ -59,7 +58,7 @@ const getWorkshopColorStyle = (className: string) => {
 };
 
 
-export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, setLessonPlans }) => {
+export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan }) => {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<FullClassInfo | null>(null);
   const [lessonPlanContent, setLessonPlanContent] = useState('');
@@ -121,14 +120,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, setLessonPlans 
 
   const handleSavePlan = () => {
     if (!selectedClass) return;
-    const existingPlanIndex = lessonPlans.findIndex(p => p.classId === selectedClass.id);
-    if (existingPlanIndex > -1) {
-      const updatedPlans = [...lessonPlans];
-      updatedPlans[existingPlanIndex] = { ...updatedPlans[existingPlanIndex], content: lessonPlanContent };
-      setLessonPlans(updatedPlans);
-    } else {
-      setLessonPlans([...lessonPlans, { classId: selectedClass.id, content: lessonPlanContent }]);
-    }
+    onSavePlan({ classId: selectedClass.id, content: lessonPlanContent });
     setIsPlanModalOpen(false);
     setSelectedClass(null);
     setLessonPlanContent('');

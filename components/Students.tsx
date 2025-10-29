@@ -1,17 +1,18 @@
-
 import React, { useState } from 'react';
 import type { Student, Workshop } from '../types';
 import { Modal } from './Modal';
 
 interface StudentsProps {
   students: Student[];
-  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
   workshops: Workshop[];
+  onAdd: (studentData: Omit<Student, 'id' | 'registrationDate'>) => Promise<void>;
+  onUpdate: (studentData: Student) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
 const StudentForm: React.FC<{
   student: Partial<Student> | null;
-  onSave: (student: Omit<Student, 'id' | 'registrationDate'> & { id?: string }) => void;
+  onSave: (student: Omit<Student, 'id'> & { id?: string }) => void;
   onCancel: () => void;
   workshops: Workshop[];
 }> = ({ student, onSave, onCancel, workshops }) => {
@@ -51,29 +52,30 @@ const StudentForm: React.FC<{
   );
 };
 
-export const Students: React.FC<StudentsProps> = ({ students, setStudents, workshops }) => {
+export const Students: React.FC<StudentsProps> = ({ students, workshops, onAdd, onUpdate, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   const handleAddStudent = (studentData: Omit<Student, 'id' | 'registrationDate'>) => {
-    const newStudent: Student = {
+    const newStudentData = {
       ...studentData,
-      id: crypto.randomUUID(),
       registrationDate: new Date().toISOString(),
     };
-    setStudents(prev => [...prev, newStudent]);
+    onAdd(newStudentData);
     setIsModalOpen(false);
   };
 
-  const handleEditStudent = (studentData: Omit<Student, 'id' | 'registrationDate'> & { id?: string }) => {
-    setStudents(prev => prev.map(s => (s.id === studentData.id ? { ...s, ...studentData } : s)));
+  const handleEditStudent = (studentData: Omit<Student, 'id'> & { id?: string }) => {
+    if (editingStudent) {
+        onUpdate({ ...editingStudent, ...studentData });
+    }
     setEditingStudent(null);
     setIsModalOpen(false);
   };
   
   const handleDeleteStudent = (id: string) => {
     if (window.confirm("Tem certeza que deseja remover este aluno?")) {
-      setStudents(prev => prev.filter(s => s.id !== id));
+      onDelete(id);
     }
   };
 
