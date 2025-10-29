@@ -23,3 +23,10 @@ export interface LessonPlan {
   classId: string;
   content: string;
 }
+
+export interface StudentNote {
+  id: string;
+  studentId: string;
+  content: string;
+  date: string; // ISO string
+}

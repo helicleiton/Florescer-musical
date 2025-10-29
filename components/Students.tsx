@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Student, Workshop } from '../types';
 import { Modal } from './Modal';
+import { weeklySchedule, dayNames } from '../data/schedule';
 
 interface StudentsProps {
   students: Student[];
@@ -8,6 +9,7 @@ interface StudentsProps {
   onAdd: (studentData: Omit<Student, 'id' | 'registrationDate'>) => Promise<void>;
   onUpdate: (studentData: Student) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onSelectStudent: (id: string) => void;
 }
 
 const StudentForm: React.FC<{
@@ -38,10 +40,16 @@ const StudentForm: React.FC<{
         <input type="number" id="age" value={age} onChange={(e) => setAge(parseInt(e.target.value, 10))} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" required min="1" />
       </div>
       <div>
-        <label htmlFor="workshop" className="block text-sm font-medium text-gray-700">Oficina</label>
+        <label htmlFor="workshop" className="block text-sm font-medium text-gray-700">Oficina / Turma</label>
         <select id="workshop" value={workshopId || ''} onChange={(e) => setWorkshopId(e.target.value || null)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
-          <option value="">Nenhuma</option>
-          {workshops.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+          <option value="">Nenhuma - Aluno Avulso</option>
+          {workshops.map(w => {
+            const scheduleInfo = weeklySchedule.find(s => s.name === w.name);
+            const label = scheduleInfo 
+              ? `${w.name} - ${dayNames[scheduleInfo.day]} às ${scheduleInfo.time} (Prof. ${scheduleInfo.teacher})`
+              : w.name;
+            return <option key={w.id} value={w.id}>{label}</option>
+          })}
         </select>
       </div>
       <div className="flex justify-end pt-4 space-x-2">
@@ -52,7 +60,7 @@ const StudentForm: React.FC<{
   );
 };
 
-export const Students: React.FC<StudentsProps> = ({ students, workshops, onAdd, onUpdate, onDelete }) => {
+export const Students: React.FC<StudentsProps> = ({ students, workshops, onAdd, onUpdate, onDelete, onSelectStudent }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
@@ -100,7 +108,7 @@ export const Students: React.FC<StudentsProps> = ({ students, workshops, onAdd, 
         <h2 className="text-3xl font-bold text-on-surface">Alunos</h2>
         <button onClick={openAddModal} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
           Adicionar Aluno
         </button>
@@ -122,7 +130,11 @@ export const Students: React.FC<StudentsProps> = ({ students, workshops, onAdd, 
           <tbody className="bg-white divide-y divide-gray-200">
             {students.length > 0 ? students.map((student) => (
               <tr key={student.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <button onClick={() => onSelectStudent(student.id)} className="text-primary hover:underline font-medium text-left">
+                    {student.name}
+                  </button>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.age}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getWorkshopName(student.workshopId)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(student.registrationDate).toLocaleDateString('pt-BR')}</td>
