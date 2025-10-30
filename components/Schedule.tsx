@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { LessonPlan, Student, Attendance, AttendanceStatus } from '../types';
 import { Modal } from './Modal';
-import { PencilSquareIcon } from './icons/PencilSquareIcon';
+import { ClipboardDocumentListIcon } from './icons/ClipboardDocumentListIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import type { WeeklyClass } from '../data/schedule';
 import { weeklySchedule, dayNames } from '../data/schedule';
@@ -104,6 +104,22 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
   
   const [studentsForSelectedClass, setStudentsForSelectedClass] = useState<Student[]>([]);
   const [currentAttendance, setCurrentAttendance] = useState<{ classId: string, records: { [key: string]: AttendanceStatus} } | null>(null);
+  
+  const [selectedTeacher, setSelectedTeacher] = useState('all');
+  const [selectedTopic, setSelectedTopic] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [viewMode, setViewMode] = useState<'upcoming' | 'past'>('upcoming');
+
+  const uniqueTeachers = useMemo(() => {
+    const teachers = new Set(weeklySchedule.map(c => c.teacher));
+    return Array.from(teachers).sort();
+  }, []);
+
+  const uniqueTopics = useMemo(() => {
+      const topics = new Set(weeklySchedule.map(c => c.name));
+      return Array.from(topics).sort();
+  }, []);
 
   const allClasses = useMemo(() => {
     const classesRaw = [];
@@ -150,10 +166,32 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
 
     return enumeratedClasses;
   }, []);
+  
+  const filteredClasses = useMemo(() => {
+      return allClasses.filter(c => {
+          const teacherMatch = selectedTeacher === 'all' || c.teacher === selectedTeacher;
+          const topicMatch = selectedTopic === 'all' || c.name === selectedTopic;
+          
+          const startFilterDate = startDate ? new Date(startDate) : null;
+          if (startFilterDate) {
+            startFilterDate.setUTCHours(0, 0, 0, 0);
+          }
+
+          const endFilterDate = endDate ? new Date(endDate) : null;
+          if (endFilterDate) {
+            endFilterDate.setUTCHours(23, 59, 59, 999);
+          }
+
+          const startDateMatch = !startFilterDate || c.date >= startFilterDate;
+          const endDateMatch = !endFilterDate || c.date <= endFilterDate;
+
+          return teacherMatch && topicMatch && startDateMatch && endDateMatch;
+      });
+  }, [allClasses, selectedTeacher, selectedTopic, startDate, endDate]);
 
   const now = new Date();
-  const upcomingClasses = allClasses.filter(c => c.date >= now).sort((a, b) => a.date.getTime() - b.date.getTime());
-  const pastClasses = allClasses.filter(c => c.date < now).sort((a, b) => b.date.getTime() - a.date.getTime());
+  const upcomingClasses = filteredClasses.filter(c => c.date >= now).sort((a, b) => a.date.getTime() - b.date.getTime());
+  const pastClasses = filteredClasses.filter(c => c.date < now).sort((a, b) => b.date.getTime() - a.date.getTime());
 
   const openPlanModal = (cls: FullClassInfo) => {
     setSelectedClass(cls);
@@ -186,9 +224,16 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
       setIsAttendanceModalOpen(false);
   };
 
+  const handleClearFilters = () => {
+    setSelectedTeacher('all');
+    setSelectedTopic('all');
+    setStartDate('');
+    setEndDate('');
+  };
+
   const renderClassList = (classList: FullClassInfo[], title: string) => (
-    <div className="bg-surface p-6 rounded-lg shadow-sm mb-8">
-      <h3 className="text-xl font-semibold text-on-surface mb-4">{title}</h3>
+    <div className="bg-surface p-6 rounded-lg shadow-sm">
+      <h3 className="text-xl font-semibold text-on-surface mb-4 sr-only">{title}</h3>
       {classList.length > 0 ? (
         <ul className="divide-y divide-slate-200">
           {classList.map(c => {
@@ -198,36 +243,51 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
             const colors = getWorkshopColorStyle(c.name);
             return (
               <li key={c.id} className="py-4">
-                <div className="flex flex-wrap justify-between items-center gap-4">
-                  <div className="flex items-center">
-                     <div className="flex flex-col items-center mr-3 space-y-1">
-                        {hasPlan && <PencilSquareIcon className={`w-5 h-5 ${colors.icon}`} title="Plano de aula preenchido" />}
-                        {hasAttendance && <CheckCircleIcon className="w-5 h-5 text-green-500" title="Frequência preenchida" />}
-                     </div>
-                    <div>
-                      <p className={`font-semibold ${colors.text}`}>{c.name} - Aula {String(c.aulaNumber).padStart(2, '0')}</p>
-                      <p className="text-sm text-on-surface-secondary">Prof. {c.teacher}</p>
+                <div className="flex flex-wrap justify-between items-center gap-x-4 gap-y-2">
+                    {/* Left side: Class info and status tags */}
+                    <div className="flex-1 min-w-[250px]">
+                        <p className={`font-semibold ${colors.text}`}>{c.name} - Aula {String(c.aulaNumber).padStart(2, '0')}</p>
+                        <p className="text-sm text-on-surface-secondary">Prof. {c.teacher}</p>
+                        {(hasPlan || hasAttendance) && (
+                            <div className="flex items-center space-x-2 mt-2">
+                                {hasPlan && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800" title="Plano de aula preenchido">
+                                        <ClipboardDocumentListIcon className="w-3 h-3 mr-1" />
+                                        Plano de Aula
+                                    </span>
+                                )}
+                                {hasAttendance && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Frequência preenchida">
+                                        <CheckCircleIcon className="w-3 h-3 mr-1" />
+                                        Frequência
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2 flex-shrink-0">
-                     <div className="text-right">
-                        <p className="font-medium text-on-surface">{c.date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
-                        <p className="text-sm text-on-surface-secondary">{c.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}</p>
-                      </div>
-                      <button onClick={() => openAttendanceModal(c)} className="px-3 py-1.5 text-sm font-medium text-primary border border-primary rounded-md hover:bg-primary/10 transition-colors">
-                        Frequência
-                      </button>
-                      <button onClick={() => openPlanModal(c)} className="px-3 py-1.5 text-sm font-medium text-secondary border border-secondary rounded-md hover:bg-secondary/10 transition-colors">
-                        {hasPlan ? 'Ver/Editar' : 'Planejar'}
-                      </button>
-                  </div>
+                    
+                    {/* Right side: Date and action buttons */}
+                    <div className="flex items-center space-x-4 flex-shrink-0">
+                        <div className="text-right">
+                            <p className="font-medium text-on-surface">{c.date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
+                            <p className="text-sm text-on-surface-secondary">{c.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}</p>
+                        </div>
+                        <div className="flex flex-col space-y-1.5">
+                            <button onClick={() => openAttendanceModal(c)} className="px-3 py-1 text-xs font-medium text-primary border border-primary rounded-md hover:bg-primary/10 transition-colors whitespace-nowrap">
+                                Frequência
+                            </button>
+                            <button onClick={() => openPlanModal(c)} className="px-3 py-1 text-xs font-medium text-secondary border border-secondary rounded-md hover:bg-secondary/10 transition-colors whitespace-nowrap">
+                                {hasPlan ? 'Ver Plano' : 'Planejar'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
               </li>
             )
           })}
         </ul>
       ) : (
-        <p className="text-center text-on-surface-secondary py-8">Nenhuma aula nesta categoria.</p>
+        <p className="text-center text-on-surface-secondary py-8">Nenhuma aula encontrada com os filtros selecionados.</p>
       )}
     </div>
   );
@@ -235,6 +295,76 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
   return (
     <div className="p-8">
       <h2 className="text-3xl font-bold text-on-surface mb-6">Horário das Aulas</h2>
+      
+      <div className="bg-surface p-4 rounded-lg shadow-sm mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+              <div className="lg:col-span-1">
+                  <label htmlFor="teacher-filter" className="block text-sm font-medium text-on-surface-secondary mb-1">
+                      Professor
+                  </label>
+                  <select
+                      id="teacher-filter"
+                      value={selectedTeacher}
+                      onChange={(e) => setSelectedTeacher(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm bg-surface text-on-surface"
+                  >
+                      <option value="all">Todos</option>
+                      {uniqueTeachers.map(teacher => (
+                          <option key={teacher} value={teacher}>{teacher}</option>
+                      ))}
+                  </select>
+              </div>
+              <div className="lg:col-span-1">
+                  <label htmlFor="topic-filter" className="block text-sm font-medium text-on-surface-secondary mb-1">
+                      Oficina
+                  </label>
+                  <select
+                      id="topic-filter"
+                      value={selectedTopic}
+                      onChange={(e) => setSelectedTopic(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm bg-surface text-on-surface"
+                  >
+                      <option value="all">Todas</option>
+                      {uniqueTopics.map(topic => (
+                          <option key={topic} value={topic}>{topic}</option>
+                      ))}
+                  </select>
+              </div>
+              <div className="lg:col-span-1">
+                  <label htmlFor="start-date-filter" className="block text-sm font-medium text-on-surface-secondary mb-1">
+                      Data de Início
+                  </label>
+                  <input
+                      type="date"
+                      id="start-date-filter"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm bg-surface text-on-surface"
+                  />
+              </div>
+              <div className="lg:col-span-1">
+                  <label htmlFor="end-date-filter" className="block text-sm font-medium text-on-surface-secondary mb-1">
+                      Data de Fim
+                  </label>
+                  <input
+                      type="date"
+                      id="end-date-filter"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm bg-surface text-on-surface"
+                  />
+              </div>
+              <div className="lg:col-span-1">
+                  <button 
+                      onClick={handleClearFilters}
+                      className="w-full px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md shadow-sm hover:bg-slate-200"
+                  >
+                      Limpar Filtros
+                  </button>
+              </div>
+          </div>
+      </div>
+
 
       <div className="bg-surface p-6 rounded-lg shadow-sm mb-8">
         <h3 className="text-xl font-semibold text-on-surface mb-4">Grade Semanal de Referência</h3>
@@ -262,9 +392,36 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
           }).filter(Boolean)}
         </div>
       </div>
+      
+      <div className="mb-6">
+        <div className="border-b border-slate-200">
+          <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+            <button
+              onClick={() => setViewMode('upcoming')}
+              className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                viewMode === 'upcoming'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              Aulas Futuras
+            </button>
+            <button
+              onClick={() => setViewMode('past')}
+              className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                viewMode === 'past'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              Aulas Passadas
+            </button>
+          </nav>
+        </div>
+      </div>
 
-      {renderClassList(upcomingClasses, "Aulas Futuras")}
-      {renderClassList(pastClasses, "Aulas Passadas")}
+      {viewMode === 'upcoming' && renderClassList(upcomingClasses, "Aulas Futuras")}
+      {viewMode === 'past' && renderClassList(pastClasses, "Aulas Passadas")}
 
       <Modal 
         isOpen={isPlanModalOpen} 
