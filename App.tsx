@@ -21,6 +21,7 @@ import { ToastContainer } from './components/ToastContainer';
 
 
 type View = 'dashboard' | 'students' | 'workshops' | 'schedule';
+type UserRole = 'admin' | 'viewer';
 
 const getWorkshopNameFromClassName = (className: string): string => {
   const parts = className.split(' ');
@@ -42,10 +43,11 @@ const AppContent: React.FC = () => {
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   
-  // FIX: Use firebase.User for v8 user type.
   const [user, setUser] = useState<firebase.User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+
+  const isAdmin = userRole === 'admin';
 
 
   const derivedWorkshops: Workshop[] = useMemo(() => {
@@ -57,14 +59,41 @@ const AppContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // FIX: Use v8 namespaced onAuthStateChanged.
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      setIsAdmin(currentUser?.email === 'admin@florescer.com');
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+      setAuthLoading(true);
+      if (currentUser) {
+        setUser(currentUser);
+        // Fetch role from Firestore
+        try {
+          const userDoc = await db.collection('users').doc(currentUser.uid).get();
+          // The super admin email always overrides the role in DB
+          if (currentUser.email === 'admin@florescer.com') {
+              setUserRole('admin');
+          } else if (userDoc.exists) {
+            const role = userDoc.data()?.role;
+            if (role === 'admin' || role === 'viewer') {
+                setUserRole(role);
+            } else {
+                setUserRole('viewer'); // Default to viewer if role is invalid or missing
+            }
+          } else {
+             // Default new/unassigned users to viewer
+             setUserRole('viewer');
+          }
+        } catch (error) {
+          console.error("Error fetching user role:", error);
+          addToast("Erro ao verificar permissões do usuário.", "error");
+          setUserRole('viewer'); // Fail safe to viewer
+        }
+      } else {
+        // No user logged in
+        setUser(null);
+        setUserRole(null);
+      }
       setAuthLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
     if (!user) {
@@ -276,6 +305,8 @@ const AppContent: React.FC = () => {
         isOpen={isSidebarOpen} 
         setIsOpen={setIsSidebarOpen}
         onLogout={handleLogout}
+        user={user}
+        userRole={userRole}
       />
       <div className="flex flex-col flex-1">
         <header className="md:hidden bg-surface shadow-sm flex items-center justify-between p-4 sticky top-0 z-10">

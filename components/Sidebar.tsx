@@ -4,6 +4,9 @@ import { UserGroupIcon } from './icons/UserGroupIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { DashboardIcon } from './icons/DashboardIcon';
 import { LogoutIcon } from './icons/LogoutIcon';
+import { UserCircleIcon } from './icons/UserCircleIcon';
+// FIX: Import firebase v9 compat to get User type.
+import firebase from 'firebase/compat/app';
 
 type View = 'dashboard' | 'students' | 'workshops' | 'schedule';
 
@@ -13,6 +16,8 @@ interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onLogout: () => void;
+  user: firebase.User | null;
+  userRole: 'admin' | 'viewer' | null;
 }
 
 const NavItem: React.FC<{
@@ -37,7 +42,7 @@ const NavItem: React.FC<{
   </button>
 );
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen, onLogout }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen, onLogout, user, userRole }) => {
   const handleNavClick = (view: View) => {
     setCurrentView(view);
     if (window.innerWidth < 768) { // md breakpoint
@@ -87,6 +92,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, i
         </nav>
         <div className="mt-auto">
            <div className="pt-4 border-t border-slate-200">
+             {user && userRole && (
+                <div className="px-4 pb-4">
+                    <div className="flex items-center">
+                        <UserCircleIcon className="w-8 h-8 mr-3 text-slate-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-on-surface truncate" title={user.email ?? ''}>
+                                {user.email}
+                            </p>
+                            <p className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full inline-block mt-1">
+                                {userRole === 'admin' ? 'Administrador' : 'Visualizador'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+             )}
              <NavItem
                 icon={<LogoutIcon />}
                 label="Sair"
