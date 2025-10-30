@@ -10,6 +10,7 @@ interface StudentsProps {
   onUpdate: (studentData: Student) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onSelectStudent: (id: string) => void;
+  isAdmin: boolean;
 }
 
 const StudentForm: React.FC<{
@@ -70,7 +71,7 @@ const StudentForm: React.FC<{
   );
 };
 
-export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, onDelete, onSelectStudent }) => {
+export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, onDelete, onSelectStudent, isAdmin }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -160,12 +161,14 @@ export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, o
       <div className="flex-shrink-0">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold text-on-surface">Alunos</h2>
-          <button onClick={openAddModal} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Adicionar Aluno
-          </button>
+          {isAdmin && (
+            <button onClick={openAddModal} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+              Adicionar Aluno
+            </button>
+          )}
         </div>
 
         <div className="mb-6">
@@ -217,10 +220,12 @@ export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, o
                       <div className="text-sm text-gray-500 hidden sm:block mx-4">
                          Matrícula: {new Date(student.registrationDate).toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})}
                       </div>
-                      <div className="flex-shrink-0 text-right text-sm font-medium space-x-4">
-                        <button onClick={() => openEditModal(student)} className="text-secondary hover:text-secondary/80">Editar</button>
-                        <button onClick={() => handleDeleteStudent(student.id)} className="text-red-600 hover:text-red-800">Remover</button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex-shrink-0 text-right text-sm font-medium space-x-4">
+                          <button onClick={() => openEditModal(student)} className="text-secondary hover:text-secondary/80">Editar</button>
+                          <button onClick={() => handleDeleteStudent(student.id)} className="text-red-600 hover:text-red-800">Remover</button>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -236,13 +241,15 @@ export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, o
         )}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingStudent ? "Editar Aluno" : "Adicionar Aluno"}>
-        <StudentForm 
-          student={editingStudent}
-          onSave={editingStudent ? handleEditStudent : handleAddStudent}
-          onCancel={() => { setIsModalOpen(false); setEditingStudent(null); }}
-        />
-      </Modal>
+      {isAdmin && (
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingStudent ? "Editar Aluno" : "Adicionar Aluno"}>
+          <StudentForm 
+            student={editingStudent}
+            onSave={editingStudent ? handleEditStudent : handleAddStudent}
+            onCancel={() => { setIsModalOpen(false); setEditingStudent(null); }}
+          />
+        </Modal>
+      )}
     </div>
   );
 };

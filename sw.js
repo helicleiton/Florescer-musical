@@ -1,4 +1,5 @@
-const CACHE_NAME = 'florescer-musical-v1';
+
+const CACHE_NAME = 'florescer-musical-v2'; // Versão do cache incrementada
 const urlsToCache = [
   '/',
   '/index.html',
@@ -12,9 +13,10 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Cache aberto');
+        console.log('Cache aberto e urls iniciais cacheadas.');
         const promises = urlsToCache.map(url => {
-            return cache.add(new Request(url, {cache: 'reload'})).catch(err => console.warn(`Falha ao cachear ${url}:`, err));
+            const request = new Request(url, {cache: 'reload'});
+            return cache.add(request).catch(err => console.warn(`Falha ao cachear ${url}:`, err));
         });
         return Promise.all(promises);
       })
@@ -23,18 +25,30 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - retorna a resposta do cache
-        if (response) {
-          return response;
-        }
-        // Não encontrou no cache, busca na rede
-        return fetch(event.request);
-      }
-    )
+    // Estratégia: Network First (Tenta a rede primeiro)
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Se a resposta da rede for bem-sucedida,
+        // clona a resposta, armazena em cache e a retorna.
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME)
+          .then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        return networkResponse;
+      })
+      .catch(() => {
+        // Se a rede falhar (ex: offline),
+        // tenta servir a resposta do cache.
+        return caches.match(event.request)
+          .then((cachedResponse) => {
+            // Retorna a resposta do cache, se existir.
+            return cachedResponse;
+          });
+      })
   );
 });
+
 
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
@@ -43,6 +57,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            // Deleta caches antigos
             return caches.delete(cacheName);
           }
         })

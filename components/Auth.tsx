@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+// FIX: Use v8 namespaced API for authentication.
+// import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { MusicalNoteIcon } from './icons/MusicalNoteIcon';
 
@@ -14,7 +15,8 @@ export const Auth: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // FIX: Use v8 namespaced API for authentication.
+      await auth.signInWithEmailAndPassword(email, password);
     } catch (err: any) {
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
         setError('E-mail ou senha inválidos.');

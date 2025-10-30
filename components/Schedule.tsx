@@ -13,6 +13,7 @@ interface ScheduleProps {
   students: Student[];
   attendances: Attendance[];
   onSaveAttendance: (attendance: Attendance) => Promise<void>;
+  isAdmin: boolean;
 }
 
 interface FullClassInfo extends WeeklyClass {
@@ -39,7 +40,8 @@ const AttendanceForm: React.FC<{
   initialRecords: { [studentId: string]: AttendanceStatus };
   onSave: (records: { [studentId: string]: AttendanceStatus }) => void;
   onCancel: () => void;
-}> = ({ students, initialRecords, onSave, onCancel }) => {
+  isAdmin: boolean;
+}> = ({ students, initialRecords, onSave, onCancel, isAdmin }) => {
   const [records, setRecords] = useState(initialRecords);
 
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
@@ -65,7 +67,7 @@ const AttendanceForm: React.FC<{
                     <p className="font-medium text-gray-800 mb-2 sm:mb-0">{student.name}</p>
                     <div className="flex items-center space-x-4">
                         {statusOptions.map(option => (
-                            <label key={option.value} className="flex items-center space-x-1.5 cursor-pointer">
+                            <label key={option.value} className={`flex items-center space-x-1.5 ${isAdmin ? 'cursor-pointer' : 'cursor-default'}`}>
                                 <input 
                                     type="radio" 
                                     name={`status-${student.id}`} 
@@ -73,6 +75,7 @@ const AttendanceForm: React.FC<{
                                     checked={records[student.id] === option.value}
                                     onChange={() => handleStatusChange(student.id, option.value)}
                                     className={`form-radio h-4 w-4 text-primary focus:${option.radioColor}`}
+                                    disabled={!isAdmin}
                                 />
                                 <span className={`text-sm ${option.color}`}>{option.label}</span>
                             </label>
@@ -82,15 +85,17 @@ const AttendanceForm: React.FC<{
             )) : <p className="text-center text-gray-500 py-4">Nenhum aluno encontrado para esta turma.</p>}
         </div>
       <div className="flex justify-end pt-4 mt-4 border-t space-x-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200">Cancelar</button>
-        <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">Salvar Frequência</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200">Fechar</button>
+        {isAdmin && (
+          <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">Salvar Frequência</button>
+        )}
       </div>
     </form>
   );
 };
 
 
-export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, students, attendances, onSaveAttendance }) => {
+export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, students, attendances, onSaveAttendance, isAdmin }) => {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
 
@@ -210,10 +215,10 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
                         <p className="text-sm text-on-surface-secondary">{c.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}</p>
                       </div>
                       <button onClick={() => openAttendanceModal(c)} className="px-3 py-1.5 text-sm font-medium text-primary border border-primary rounded-md hover:bg-primary/10 transition-colors">
-                        {hasAttendance ? 'Ver/Editar' : 'Frequência'}
+                        Frequência
                       </button>
                       <button onClick={() => openPlanModal(c)} className="px-3 py-1.5 text-sm font-medium text-secondary border border-secondary rounded-md hover:bg-secondary/10 transition-colors">
-                        Planejar
+                        {hasPlan ? 'Ver/Editar' : 'Planejar'}
                       </button>
                   </div>
                 </div>
@@ -272,11 +277,14 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
             onChange={(e) => setLessonPlanContent(e.target.value)}
             rows={10}
             className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-            placeholder="Digite o conteúdo e os objetivos para esta aula..."
+            placeholder={isAdmin ? "Digite o conteúdo e os objetivos para esta aula..." : "Visualizando plano de aula..."}
+            readOnly={!isAdmin}
           ></textarea>
           <div className="flex justify-end pt-4 space-x-2">
-            <button onClick={() => setIsPlanModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200">Cancelar</button>
-            <button onClick={handleSavePlan} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">Salvar Plano</button>
+            <button onClick={() => setIsPlanModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200">Fechar</button>
+            {isAdmin && (
+              <button onClick={handleSavePlan} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">Salvar Plano</button>
+            )}
           </div>
         </div>
       </Modal>
@@ -292,6 +300,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
                 initialRecords={currentAttendance?.records || {}}
                 onSave={handleSaveAttendance}
                 onCancel={() => setIsAttendanceModalOpen(false)}
+                isAdmin={isAdmin}
             />
         </Modal>
       )}

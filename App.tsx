@@ -9,26 +9,29 @@ import { Auth } from './components/Auth';
 import type { Student, Workshop, LessonPlan, StudentNote, Attendance } from './types';
 import { MenuIcon } from './components/icons/MenuIcon';
 import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
+// FIX: Use Firebase v8 namespaced API.
 import { db, auth } from './firebase/config';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { collection, onSnapshot, doc, addDoc, setDoc, deleteDoc, query, orderBy, writeBatch, getDocs } from 'firebase/firestore';
+// FIX: Import firebase v9 compat to get User type.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 import { weeklySchedule } from './data/schedule';
 import { initialStudents } from './data/initialStudents';
+import { ToastProvider, useToast } from './contexts/ToastContext';
+import { ToastContainer } from './components/ToastContainer';
+
 
 type View = 'dashboard' | 'students' | 'workshops' | 'schedule';
 
-const SEED_FLAG = 'initial_seed_complete_v2'; // Flag to ensure seeding happens only once
-
 const getWorkshopNameFromClassName = (className: string): string => {
   const parts = className.split(' ');
-  // Verifica se a última parte é uma letra maiúscula única (ex: "A", "B")
   if (parts.length > 1 && /^[A-Z]$/.test(parts[parts.length - 1])) {
     return parts.slice(0, -1).join(' ');
   }
   return className;
 };
 
-function App() {
+const AppContent: React.FC = () => {
+  const { addToast } = useToast();
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -39,8 +42,10 @@ function App() {
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   
-  const [user, setUser] = useState<User | null>(null);
+  // FIX: Use firebase.User for v8 user type.
+  const [user, setUser] = useState<firebase.User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
 
   const derivedWorkshops: Workshop[] = useMemo(() => {
@@ -51,130 +56,179 @@ function App() {
     })).sort((a,b) => a.name.localeCompare(b.name));
   }, []);
 
-  // --- Efeito para monitorar o estado de autenticação ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    // FIX: Use v8 namespaced onAuthStateChanged.
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
+      setIsAdmin(currentUser?.email === 'admin@florescer.com');
       setAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-
-  // --- Efeitos para ouvir as coleções do Firestore em tempo real ---
   useEffect(() => {
-    // Só inicia os listeners se o usuário estiver logado
     if (!user) {
-      setDataLoading(false); // Garante que o loading de dados não fique preso
+      setDataLoading(false);
+      setStudents([]);
+      setLessonPlans([]);
+      setStudentNotes([]);
+      setAttendances([]);
       return;
-    };
+    }
+
+    setDataLoading(true);
 
     const unsubs: (() => void)[] = [];
 
-    const setupListeners = () => {
-      setDataLoading(true);
-      const qStudents = query(collection(db, 'students'), orderBy('name', 'asc'));
-      unsubs.push(onSnapshot(qStudents, (querySnapshot) => {
-        const studentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
-        setStudents(studentsData);
-        setDataLoading(false); // Desativa o loading quando os dados chegam
-      }, (error) => {
-        console.error("Erro ao buscar alunos: ", error);
-        setDataLoading(false); // Desativa o loading mesmo se der erro
-      }));
-      
-      unsubs.push(onSnapshot(collection(db, 'lessonPlans'), (querySnapshot) => {
-        const lessonPlansData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as LessonPlan));
-        setLessonPlans(lessonPlansData);
-      }));
-      
-      const qNotes = query(collection(db, 'studentNotes'), orderBy('date', 'desc'));
-      unsubs.push(onSnapshot(qNotes, (querySnapshot) => {
-          const notesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentNote));
-          setStudentNotes(notesData);
-      }));
-
-      unsubs.push(onSnapshot(collection(db, 'attendances'), (querySnapshot) => {
-        const attendanceData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as Attendance));
-        setAttendances(attendanceData);
-      }));
-    };
-
-    const initializeData = async () => {
-      if (localStorage.getItem(SEED_FLAG) !== 'true') {
-        const studentsCollectionRef = collection(db, 'students');
-        const snapshot = await getDocs(studentsCollectionRef);
-
-        if (snapshot.docs.length !== initialStudents.length) {
-          console.warn(`Inconsistência de dados detectada (${snapshot.docs.length} vs ${initialStudents.length}). Restaurando a lista de alunos...`);
-          
+    // Setup listener for students with initialization logic
+    const studentsQuery = db.collection('students').orderBy('name', 'asc');
+    unsubs.push(studentsQuery.onSnapshot(
+      async (querySnapshot) => {
+        // Only populate if the database is truly empty and user is admin.
+        if (querySnapshot.empty && isAdmin) {
           try {
-            const batch = writeBatch(db);
-            snapshot.docs.forEach(doc => batch.delete(doc.ref));
-            initialStudents.forEach(student => {
-              const studentRef = doc(collection(db, 'students'));
+            addToast('Nenhum aluno encontrado. Carregando lista inicial...', 'info');
+            const batch = db.batch();
+            initialStudents.forEach((student) => {
+              const studentRef = db.collection('students').doc(); // Firestore generates ID
               batch.set(studentRef, {
                 ...student,
-                registrationDate: new Date().toISOString()
+                registrationDate: new Date().toISOString(),
               });
             });
             await batch.commit();
-            console.log("Lista de alunos restaurada com sucesso.");
+            // The onSnapshot listener will be called again automatically after the commit.
           } catch (error) {
-            console.error("Erro ao restaurar a lista de alunos: ", error);
+            console.error('Erro ao popular a lista de alunos: ', error);
+            addToast('Falha ao carregar a lista inicial de alunos.', 'error');
+            setDataLoading(false);
           }
+        } else {
+          const studentsData = querySnapshot.docs.map(
+            (doc) => ({ id: doc.id, ...doc.data() } as Student)
+          );
+          setStudents(studentsData);
+          setDataLoading(false);
         }
-        localStorage.setItem(SEED_FLAG, 'true');
+      },
+      (error) => {
+        console.error('Erro ao buscar alunos: ', error);
+        addToast('Não foi possível carregar os alunos.', 'error');
+        setDataLoading(false);
       }
-      setupListeners();
-    };
+    ));
 
-    initializeData();
+    // Setup other listeners
+    unsubs.push(db.collection('lessonPlans').onSnapshot((querySnapshot) => {
+      const lessonPlansData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as LessonPlan));
+      setLessonPlans(lessonPlansData);
+    }));
+      
+    const notesQuery = db.collection('studentNotes').orderBy('date', 'desc');
+    unsubs.push(notesQuery.onSnapshot((querySnapshot) => {
+        const notesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentNote));
+        setStudentNotes(notesData);
+    }));
 
-    // Limpa os listeners ao desmontar o componente
+    unsubs.push(db.collection('attendances').onSnapshot((querySnapshot) => {
+      const attendanceData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as Attendance));
+      setAttendances(attendanceData);
+    }));
+
+    // Cleanup function
     return () => {
       unsubs.forEach(unsub => unsub());
     };
-  }, [user]); // Re-executa o efeito quando o usuário muda
+  }, [user, addToast, isAdmin]);
 
-  // --- Funções CRUD para interagir com o Firestore ---
   const addStudent = async (studentData: Omit<Student, 'id'>) => {
-    await addDoc(collection(db, 'students'), studentData);
+    try {
+      // FIX: Use v8 namespaced API to add a document.
+      await db.collection('students').add(studentData);
+      addToast('Aluno adicionado com sucesso!', 'success');
+    } catch (error) {
+      console.error("Erro ao adicionar aluno: ", error);
+      addToast('Falha ao adicionar aluno.', 'error');
+    }
   };
   const updateStudent = async (studentData: Student) => {
-    const studentRef = doc(db, 'students', studentData.id);
-    await setDoc(studentRef, studentData, { merge: true });
+    try {
+      // FIX: Use v8 namespaced API to set a document.
+      const studentRef = db.collection('students').doc(studentData.id);
+      await studentRef.set(studentData, { merge: true });
+      addToast('Aluno atualizado com sucesso!', 'success');
+    } catch (error) {
+      console.error("Erro ao atualizar aluno: ", error);
+      addToast('Falha ao atualizar aluno.', 'error');
+    }
   };
   const deleteStudent = async (id: string) => {
-    await deleteDoc(doc(db, 'students', id));
+    try {
+      // FIX: Use v8 namespaced API to delete a document.
+      await db.collection('students').doc(id).delete();
+      addToast('Aluno removido com sucesso!', 'success');
+    } catch (error) {
+      console.error("Erro ao remover aluno: ", error);
+      addToast('Falha ao remover aluno.', 'error');
+    }
   };
 
   const saveLessonPlan = async (lessonPlan: LessonPlan) => {
-    await setDoc(doc(db, 'lessonPlans', lessonPlan.classId), lessonPlan);
+    try {
+      // FIX: Use v8 namespaced API to set a document.
+      await db.collection('lessonPlans').doc(lessonPlan.classId).set(lessonPlan);
+      addToast('Plano de aula salvo com sucesso!', 'success');
+    } catch (error) {
+      console.error("Erro ao salvar plano de aula: ", error);
+      addToast('Falha ao salvar o plano de aula.', 'error');
+    }
   };
   
   const addStudentNote = async (noteData: Omit<StudentNote, 'id'>) => {
-      await addDoc(collection(db, 'studentNotes'), noteData);
+    try {
+      // FIX: Use v8 namespaced API to add a document.
+      await db.collection('studentNotes').add(noteData);
+      addToast('Anotação adicionada com sucesso!', 'success');
+    } catch (error) {
+      console.error("Erro ao adicionar anotação: ", error);
+      addToast('Falha ao adicionar anotação.', 'error');
+    }
   };
   const deleteStudentNote = async (id: string) => {
-      await deleteDoc(doc(db, 'studentNotes', id));
+    try {
+      // FIX: Use v8 namespaced API to delete a document.
+      await db.collection('studentNotes').doc(id).delete();
+      addToast('Anotação removida com sucesso!', 'success');
+    } catch (error) {
+      console.error("Erro ao remover anotação: ", error);
+      addToast('Falha ao remover anotação.', 'error');
+    }
   };
 
   const saveAttendance = async (attendanceData: Attendance) => {
-    await setDoc(doc(db, 'attendances', attendanceData.classId), { records: attendanceData.records });
+    try {
+      // FIX: Use v8 namespaced API to set a document.
+      await db.collection('attendances').doc(attendanceData.classId).set({ records: attendanceData.records });
+      addToast('Frequência salva com sucesso!', 'success');
+    } catch (error) {
+      console.error("Erro ao salvar frequência: ", error);
+      addToast('Falha ao salvar frequência.', 'error');
+    }
   };
   
-  const handleSelectStudent = (id: string) => {
-    setSelectedStudentId(id);
-  };
-
+  const handleSelectStudent = (id: string) => setSelectedStudentId(id);
   const handleBackToStudents = () => {
     setSelectedStudentId(null);
     setCurrentView('students');
   };
-
   const handleLogout = async () => {
-    await signOut(auth);
+    try {
+      // FIX: Use v8 namespaced signOut.
+      await auth.signOut();
+    } catch (error) {
+      console.error("Erro ao sair: ", error);
+      addToast('Falha ao tentar sair.', 'error');
+    }
   };
 
   const renderView = () => {
@@ -194,52 +248,22 @@ function App() {
                     onAddNote={addStudentNote}
                     onDeleteNote={deleteStudentNote}
                     onBack={handleBackToStudents}
+                    isAdmin={isAdmin}
                 />;
     }
 
     switch (currentView) {
-      case 'dashboard':
-        return <Dashboard 
-                  students={students} 
-                  workshops={derivedWorkshops} 
-                />;
-      case 'students':
-        return <Students 
-                  students={students} 
-                  onAdd={addStudent} 
-                  onUpdate={updateStudent} 
-                  onDelete={deleteStudent} 
-                  onSelectStudent={handleSelectStudent}
-                />;
-      case 'workshops':
-        return <Workshops 
-                  workshops={derivedWorkshops} 
-                  students={students} 
-                />;
-      case 'schedule':
-        return <Schedule 
-                  lessonPlans={lessonPlans} 
-                  onSavePlan={saveLessonPlan}
-                  students={students}
-                  attendances={attendances}
-                  onSaveAttendance={saveAttendance}
-                />;
-      default:
-        return <Dashboard 
-                  students={students} 
-                  workshops={derivedWorkshops} 
-                />;
+      case 'dashboard': return <Dashboard students={students} workshops={derivedWorkshops} />;
+      case 'students': return <Students students={students} onAdd={addStudent} onUpdate={updateStudent} onDelete={deleteStudent} onSelectStudent={handleSelectStudent} isAdmin={isAdmin} />;
+      case 'workshops': return <Workshops workshops={derivedWorkshops} students={students} />;
+      case 'schedule': return <Schedule lessonPlans={lessonPlans} onSavePlan={saveLessonPlan} students={students} attendances={attendances} onSaveAttendance={saveAttendance} isAdmin={isAdmin} />;
+      default: return <Dashboard students={students} workshops={derivedWorkshops} />;
     }
   };
   
   if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <p className="text-on-surface">Verificando autenticação...</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-screen bg-background"><p className="text-on-surface">Verificando autenticação...</p></div>;
   }
-
   if (!user) {
     return <Auth />;
   }
@@ -254,7 +278,6 @@ function App() {
         onLogout={handleLogout}
       />
       <div className="flex flex-col flex-1">
-         {/* Mobile Header */}
         <header className="md:hidden bg-surface shadow-sm flex items-center justify-between p-4 sticky top-0 z-10">
           <div className="flex items-center">
              <div className="p-1.5 mr-3 text-white rounded-lg bg-primary">
@@ -273,6 +296,15 @@ function App() {
         </main>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+      <ToastContainer />
+    </ToastProvider>
   );
 }
 

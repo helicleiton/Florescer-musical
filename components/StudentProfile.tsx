@@ -11,6 +11,7 @@ interface StudentProfileProps {
   onAddNote: (note: Omit<StudentNote, 'id'>) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
   onBack: () => void;
+  isAdmin: boolean;
 }
 
 const InfoCard: React.FC<{title: string, value: string | number}> = ({title, value}) => (
@@ -20,7 +21,7 @@ const InfoCard: React.FC<{title: string, value: string | number}> = ({title, val
     </div>
 );
 
-export const StudentProfile: React.FC<StudentProfileProps> = ({ student, notes, onAddNote, onDeleteNote, onBack }) => {
+export const StudentProfile: React.FC<StudentProfileProps> = ({ student, notes, onAddNote, onDeleteNote, onBack, isAdmin }) => {
     const [newNote, setNewNote] = useState('');
 
     const handleAddNote = () => {
@@ -70,27 +71,31 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, notes, 
                                 <p className="text-sm text-on-surface whitespace-pre-wrap">{note.content}</p>
                                 <div className="flex justify-between items-center mt-1">
                                     <p className="text-xs text-on-surface-secondary">{new Date(note.date).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo'})}</p>
-                                    <button onClick={() => onDeleteNote(note.id)} className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 p-1 rounded-full hover:bg-red-100">
-                                        <TrashIcon className="w-4 h-4 text-red-500" />
-                                    </button>
+                                    {isAdmin && (
+                                      <button onClick={() => onDeleteNote(note.id)} className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 p-1 rounded-full hover:bg-red-100">
+                                          <TrashIcon className="w-4 h-4 text-red-500" />
+                                      </button>
+                                    )}
                                 </div>
                             </div>
                         )) : (
                            <p className="text-sm text-center text-on-surface-secondary py-4">Nenhuma anotação adicionada.</p>
                         )}
                     </div>
-                    <div className="mt-auto pt-4 border-t border-slate-200">
-                        <textarea 
-                            value={newNote}
-                            onChange={(e) => setNewNote(e.target.value)}
-                            rows={3}
-                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary text-sm"
-                            placeholder="Adicionar nova anotação..."
-                        />
-                        <button onClick={handleAddNote} className="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">
-                            Salvar Anotação
-                        </button>
-                    </div>
+                    {isAdmin && (
+                        <div className="mt-auto pt-4 border-t border-slate-200">
+                            <textarea 
+                                value={newNote}
+                                onChange={(e) => setNewNote(e.target.value)}
+                                rows={3}
+                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary text-sm"
+                                placeholder="Adicionar nova anotação..."
+                            />
+                            <button onClick={handleAddNote} className="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">
+                                Salvar Anotação
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
