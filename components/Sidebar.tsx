@@ -7,8 +7,9 @@ import { LogoutIcon } from './icons/LogoutIcon';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 // FIX: Import firebase v9 compat to get User type.
 import firebase from 'firebase/compat/app';
+import { PencilSquareIcon } from './icons/PencilSquareIcon';
 
-type View = 'dashboard' | 'students' | 'workshops' | 'schedule';
+type View = 'dashboard' | 'students' | 'workshops' | 'schedule' | 'syllabus';
 
 interface SidebarProps {
   currentView: View;
@@ -88,6 +89,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, i
             label="Horário"
             isActive={currentView === 'schedule'}
             onClick={() => handleNavClick('schedule')}
+          />
+           <NavItem
+            icon={<PencilSquareIcon />}
+            label="Planejamento"
+            isActive={currentView === 'syllabus'}
+            onClick={() => handleNavClick('syllabus')}
           />
         </nav>
         <div className="mt-auto">

@@ -40,3 +40,11 @@ export interface Attendance {
     [studentId: string]: AttendanceStatus;
   };
 }
+
+export interface Syllabus {
+  id: string; // composite key: workshopId-year-month
+  workshopId: string;
+  year: number;
+  month: number; // 1-12
+  content: string;
+}
