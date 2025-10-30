@@ -41,20 +41,20 @@ const StudentForm: React.FC<{
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nome</label>
-        <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" required />
+        <label htmlFor="name" className="block text-sm font-medium text-on-surface-secondary">Nome</label>
+        <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface" required />
       </div>
       <div>
-        <label htmlFor="age" className="block text-sm font-medium text-gray-700">Idade</label>
-        <input type="number" id="age" value={age} onChange={(e) => setAge(parseInt(e.target.value, 10))} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" required min="1" />
+        <label htmlFor="age" className="block text-sm font-medium text-on-surface-secondary">Idade</label>
+        <input type="number" id="age" value={age} onChange={(e) => setAge(parseInt(e.target.value, 10))} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface" required min="1" />
       </div>
       <div>
-        <label htmlFor="workshop" className="block text-sm font-medium text-gray-700">Oficina / Turma</label>
+        <label htmlFor="workshop" className="block text-sm font-medium text-on-surface-secondary">Oficina / Turma</label>
         <select 
           id="workshop" 
           value={workshopName} 
           onChange={(e) => setWorkshopName(e.target.value)} 
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+          className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface"
         >
           <option value="">Nenhuma - Aluno Avulso</option>
           {sortedSchedule.map(w => {
@@ -64,7 +64,7 @@ const StudentForm: React.FC<{
         </select>
       </div>
       <div className="flex justify-end pt-4 space-x-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200">Cancelar</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md shadow-sm hover:bg-slate-200">Cancelar</button>
         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">Salvar</button>
       </div>
     </form>
@@ -181,7 +181,7 @@ export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, o
               placeholder="Buscar por nome..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm bg-surface text-on-surface placeholder:text-on-surface-secondary"
             />
           </div>
         </div>

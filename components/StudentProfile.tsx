@@ -88,7 +88,7 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, notes, 
                                 value={newNote}
                                 onChange={(e) => setNewNote(e.target.value)}
                                 rows={3}
-                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary text-sm"
+                                className="w-full p-2 border border-slate-300 rounded-md focus:ring-primary focus:border-primary text-sm bg-surface text-on-surface placeholder:text-on-surface-secondary"
                                 placeholder="Adicionar nova anotação..."
                             />
                             <button onClick={handleAddNote} className="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">

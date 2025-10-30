@@ -85,7 +85,7 @@ const AttendanceForm: React.FC<{
             )) : <p className="text-center text-gray-500 py-4">Nenhum aluno encontrado para esta turma.</p>}
         </div>
       <div className="flex justify-end pt-4 mt-4 border-t space-x-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200">Fechar</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md shadow-sm hover:bg-slate-200">Fechar</button>
         {isAdmin && (
           <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">Salvar Frequência</button>
         )}
@@ -276,12 +276,12 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
             value={lessonPlanContent}
             onChange={(e) => setLessonPlanContent(e.target.value)}
             rows={10}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
+            className="w-full p-2 bg-surface text-on-surface border border-slate-300 rounded-md focus:ring-primary focus:border-primary placeholder:text-on-surface-secondary"
             placeholder={isAdmin ? "Digite o conteúdo e os objetivos para esta aula..." : "Visualizando plano de aula..."}
             readOnly={!isAdmin}
           ></textarea>
           <div className="flex justify-end pt-4 space-x-2">
-            <button onClick={() => setIsPlanModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200">Fechar</button>
+            <button onClick={() => setIsPlanModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md shadow-sm hover:bg-slate-200">Fechar</button>
             {isAdmin && (
               <button onClick={handleSavePlan} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">Salvar Plano</button>
             )}

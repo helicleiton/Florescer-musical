@@ -38,14 +38,14 @@ export const Auth: React.FC = () => {
           </div>
            <h1 className="mt-4 text-3xl font-bold text-on-surface">
             Florescer <span className="font-normal text-primary">Musical</span>
-          </h1>
+           </h1>
           <p className="mt-2 text-sm text-on-surface-secondary">
             Acesso ao painel de gerenciamento
           </p>
         </div>
         <form className="space-y-6" onSubmit={handleLogin}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="block text-sm font-medium text-on-surface-secondary">
               Endereço de E-mail
             </label>
             <div className="mt-1">
@@ -57,13 +57,13 @@ export const Auth: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                className="block w-full px-3 py-2 placeholder:text-on-surface-secondary border border-slate-300 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-primary focus:border-primary sm:text-sm bg-surface text-on-surface"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="password"className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password"className="block text-sm font-medium text-on-surface-secondary">
               Senha
             </label>
             <div className="mt-1">
@@ -75,7 +75,7 @@ export const Auth: React.FC = () => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                className="block w-full px-3 py-2 placeholder:text-on-surface-secondary border border-slate-300 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-primary focus:border-primary sm:text-sm bg-surface text-on-surface"
               />
             </div>
           </div>

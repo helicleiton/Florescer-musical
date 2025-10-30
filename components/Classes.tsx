@@ -41,26 +41,26 @@ const ClassForm: React.FC<{
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="topic" className="block text-sm font-medium text-gray-700">Tópico da Aula</label>
-        <input type="text" id="topic" value={topic} onChange={(e) => setTopic(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" required />
+        <label htmlFor="topic" className="block text-sm font-medium text-on-surface-secondary">Tópico da Aula</label>
+        <input type="text" id="topic" value={topic} onChange={(e) => setTopic(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface" required />
       </div>
       <div>
-        <label htmlFor="teacher" className="block text-sm font-medium text-gray-700">Professor</label>
-        <input type="text" id="teacher" value={teacher} onChange={(e) => setTeacher(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" required />
+        <label htmlFor="teacher" className="block text-sm font-medium text-on-surface-secondary">Professor</label>
+        <input type="text" id="teacher" value={teacher} onChange={(e) => setTeacher(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface" required />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="date" className="block text-sm font-medium text-gray-700">Data</label>
-          <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" required />
+          <label htmlFor="date" className="block text-sm font-medium text-on-surface-secondary">Data</label>
+          <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface" required />
         </div>
         <div>
-          <label htmlFor="time" className="block text-sm font-medium text-gray-700">Hora</label>
-          <input type="time" id="time" value={time} onChange={(e) => setTime(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" required />
+          <label htmlFor="time" className="block text-sm font-medium text-on-surface-secondary">Hora</label>
+          <input type="time" id="time" value={time} onChange={(e) => setTime(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface" required />
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700">Alunos</label>
-        <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-gray-300 p-2 space-y-2">
+        <label className="block text-sm font-medium text-on-surface-secondary">Alunos</label>
+        <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-slate-300 p-2 space-y-2">
             {students.length > 0 ? students.map(student => (
                 <div key={student.id} className="flex items-center">
                     <input
@@ -68,15 +68,15 @@ const ClassForm: React.FC<{
                         type="checkbox"
                         checked={studentIds.includes(student.id)}
                         onChange={() => handleStudentSelection(student.id)}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
                     />
-                    <label htmlFor={`student-${student.id}`} className="ml-3 text-sm text-gray-700">{student.name}</label>
+                    <label htmlFor={`student-${student.id}`} className="ml-3 text-sm text-on-surface-secondary">{student.name}</label>
                 </div>
             )) : <p className="text-sm text-gray-500">Nenhum aluno cadastrado.</p>}
         </div>
       </div>
       <div className="flex justify-end pt-4 space-x-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200">Cancelar</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md shadow-sm hover:bg-slate-200">Cancelar</button>
         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus">Salvar</button>
       </div>
     </form>

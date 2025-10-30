@@ -4,6 +4,7 @@ import { UserGroupIcon } from './icons/UserGroupIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { UserPlusIcon } from './icons/UserPlusIcon';
 import { weeklySchedule } from '../data/schedule';
+import { ChartBarIcon } from './icons/ChartBarIcon';
 
 // Adicionado para alinhar com a data de início real do curso
 const courseStartDate = new Date('2025-11-01T03:00:00Z'); // Representa 00:00 de 1 de Nov em SP
@@ -24,6 +25,34 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string |
     </div>
   </div>
 );
+
+const StudentDistributionChart: React.FC<{ data: { name: string; count: number }[] }> = ({ data }) => {
+    if (data.length === 0) {
+        return <p className="text-center text-on-surface-secondary py-8">Não há alunos em turmas para exibir.</p>;
+    }
+    const maxCount = Math.max(...data.map(item => item.count), 0);
+
+    return (
+        <div className="space-y-3 pr-4">
+            {data.map((item) => (
+                <div key={item.name} className="flex items-center text-sm">
+                    <div className="w-1/3 text-right pr-4 font-medium text-on-surface truncate" title={item.name}>
+                        {item.name}
+                    </div>
+                    <div className="w-2/3">
+                        <div 
+                            className="bg-primary h-6 rounded-r-md transition-all duration-500 ease-out flex items-center justify-start pl-2"
+                            style={{ width: maxCount > 0 ? `${(item.count / maxCount) * 100}%` : '0%' }}
+                        >
+                            <span className="font-bold text-white">{item.count}</span>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 
 export const Dashboard: React.FC<DashboardProps> = ({ students, workshops }) => {
   const upcomingFixedClasses = useMemo(() => {
@@ -71,6 +100,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, workshops }) => 
       .sort((a, b) => new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime())
       .slice(0, 5);
   }, [students]);
+  
+  const studentDistribution = useMemo(() => {
+    const counts: { [key: string]: number } = {};
+    students.forEach(student => {
+        if (student.workshopName) {
+            counts[student.workshopName] = (counts[student.workshopName] || 0) + 1;
+        }
+    });
+
+    return Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+  }, [students]);
 
   return (
     <div className="p-8">
@@ -91,7 +133,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, workshops }) => 
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className="bg-surface p-6 rounded-lg shadow-sm">
           <h3 className="text-xl font-semibold text-on-surface mb-4">Próximas Aulas da Grade</h3>
           {upcomingFixedClasses.length > 0 ? (
@@ -143,6 +185,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, workshops }) => 
           )}
         </div>
       </div>
+      
+      <div className="bg-surface p-6 rounded-lg shadow-sm">
+          <h3 className="text-xl font-semibold text-on-surface mb-4 flex items-center">
+            <ChartBarIcon className="w-6 h-6 mr-2 text-on-surface-secondary" />
+            Distribuição de Alunos por Turma
+          </h3>
+          <StudentDistributionChart data={studentDistribution} />
+      </div>
+
     </div>
   );
 };
