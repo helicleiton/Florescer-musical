@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { MusicalNoteIcon } from './icons/MusicalNoteIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { DashboardIcon } from './icons/DashboardIcon';
-import { ClipboardDocumentListIcon } from './icons/ClipboardDocumentListIcon';
+import { LogoutIcon } from './icons/LogoutIcon';
 
 type View = 'dashboard' | 'students' | 'workshops' | 'schedule';
 
@@ -13,6 +12,7 @@ interface SidebarProps {
   setCurrentView: (view: View) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  onLogout: () => void;
 }
 
 const NavItem: React.FC<{
@@ -20,12 +20,15 @@ const NavItem: React.FC<{
   label: string;
   isActive: boolean;
   onClick: () => void;
-}> = ({ icon, label, isActive, onClick }) => (
+  isLogout?: boolean;
+}> = ({ icon, label, isActive, onClick, isLogout = false }) => (
   <button
     onClick={onClick}
     className={`flex items-center w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
       isActive
         ? 'bg-primary text-white'
+        : isLogout 
+        ? 'text-slate-600 hover:bg-red-50 hover:text-red-600'
         : 'text-slate-600 hover:bg-emerald-50 hover:text-primary'
     }`}
   >
@@ -34,7 +37,7 @@ const NavItem: React.FC<{
   </button>
 );
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isOpen, setIsOpen, onLogout }) => {
   const handleNavClick = (view: View) => {
     setCurrentView(view);
     if (window.innerWidth < 768) { // md breakpoint
@@ -82,13 +85,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, i
             onClick={() => handleNavClick('schedule')}
           />
         </nav>
-        <div className="mt-auto text-center">
-          <p className="text-xs text-slate-400 mb-1">
-            Instituto Novo Milênio
-          </p>
-          <p className="text-xs text-slate-400">
-            Desenvolvido por Helicleiton
-          </p>
+        <div className="mt-auto">
+           <div className="pt-4 border-t border-slate-200">
+             <NavItem
+                icon={<LogoutIcon />}
+                label="Sair"
+                isActive={false}
+                onClick={onLogout}
+                isLogout={true}
+             />
+           </div>
+          <div className="mt-4 text-center">
+            <p className="text-xs text-slate-400 mb-1">
+              Instituto Novo Milênio
+            </p>
+            <p className="text-xs text-slate-400">
+              Desenvolvido por Helicleiton
+            </p>
+          </div>
         </div>
       </div>
     </>

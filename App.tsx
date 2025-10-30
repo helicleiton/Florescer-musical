@@ -5,10 +5,12 @@ import { Students } from './components/Students';
 import { Workshops } from './components/Instruments';
 import { Schedule } from './components/Schedule';
 import { StudentProfile } from './components/StudentProfile';
+import { Auth } from './components/Auth';
 import type { Student, Workshop, LessonPlan, StudentNote, Attendance } from './types';
 import { MenuIcon } from './components/icons/MenuIcon';
 import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
-import { db } from './firebase/config';
+import { db, auth } from './firebase/config';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { collection, onSnapshot, doc, addDoc, setDoc, deleteDoc, query, orderBy, writeBatch, getDocs } from 'firebase/firestore';
 import { weeklySchedule } from './data/schedule';
 import { initialStudents } from './data/initialStudents';
@@ -35,7 +37,11 @@ function App() {
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [studentNotes, setStudentNotes] = useState<StudentNote[]>([]);
   const [attendances, setAttendances] = useState<Attendance[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
+  
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
 
   const derivedWorkshops: Workshop[] = useMemo(() => {
     const workshopNames = new Set(weeklySchedule.map(c => getWorkshopNameFromClassName(c.name)));
@@ -45,19 +51,36 @@ function App() {
     })).sort((a,b) => a.name.localeCompare(b.name));
   }, []);
 
+  // --- Efeito para monitorar o estado de autenticação ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+
   // --- Efeitos para ouvir as coleções do Firestore em tempo real ---
   useEffect(() => {
+    // Só inicia os listeners se o usuário estiver logado
+    if (!user) {
+      setDataLoading(false); // Garante que o loading de dados não fique preso
+      return;
+    };
+
     const unsubs: (() => void)[] = [];
 
     const setupListeners = () => {
+      setDataLoading(true);
       const qStudents = query(collection(db, 'students'), orderBy('name', 'asc'));
       unsubs.push(onSnapshot(qStudents, (querySnapshot) => {
         const studentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
         setStudents(studentsData);
-        setLoading(false); // Desativa o loading quando os dados chegam
+        setDataLoading(false); // Desativa o loading quando os dados chegam
       }, (error) => {
         console.error("Erro ao buscar alunos: ", error);
-        setLoading(false); // Desativa o loading mesmo se der erro
+        setDataLoading(false); // Desativa o loading mesmo se der erro
       }));
       
       unsubs.push(onSnapshot(collection(db, 'lessonPlans'), (querySnapshot) => {
@@ -79,7 +102,6 @@ function App() {
 
     const initializeData = async () => {
       if (localStorage.getItem(SEED_FLAG) !== 'true') {
-        setLoading(true);
         const studentsCollectionRef = collection(db, 'students');
         const snapshot = await getDocs(studentsCollectionRef);
 
@@ -113,7 +135,7 @@ function App() {
     return () => {
       unsubs.forEach(unsub => unsub());
     };
-  }, []);
+  }, [user]); // Re-executa o efeito quando o usuário muda
 
   // --- Funções CRUD para interagir com o Firestore ---
   const addStudent = async (studentData: Omit<Student, 'id'>) => {
@@ -128,7 +150,6 @@ function App() {
   };
 
   const saveLessonPlan = async (lessonPlan: LessonPlan) => {
-    // Usamos classId como ID do documento para facilitar a busca
     await setDoc(doc(db, 'lessonPlans', lessonPlan.classId), lessonPlan);
   };
   
@@ -149,11 +170,15 @@ function App() {
 
   const handleBackToStudents = () => {
     setSelectedStudentId(null);
-    setCurrentView('students'); // Garante que a view correta seja mostrada ao voltar
+    setCurrentView('students');
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
   };
 
   const renderView = () => {
-    if (loading) {
+    if (dataLoading) {
       return <div className="flex items-center justify-center h-full"><p>Carregando dados...</p></div>
     }
     
@@ -206,10 +231,28 @@ function App() {
                 />;
     }
   };
+  
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <p className="text-on-surface">Verificando autenticação...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
 
   return (
     <div className="flex bg-background text-on-surface min-h-screen font-sans">
-      <Sidebar currentView={currentView} setCurrentView={setCurrentView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      <Sidebar 
+        currentView={currentView} 
+        setCurrentView={setCurrentView} 
+        isOpen={isSidebarOpen} 
+        setIsOpen={setIsSidebarOpen}
+        onLogout={handleLogout}
+      />
       <div className="flex flex-col flex-1">
          {/* Mobile Header */}
         <header className="md:hidden bg-surface shadow-sm flex items-center justify-between p-4 sticky top-0 z-10">

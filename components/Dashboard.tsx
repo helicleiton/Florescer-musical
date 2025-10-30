@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import type { Student, Workshop } from '../types';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
+import { UserPlusIcon } from './icons/UserPlusIcon';
 import { weeklySchedule } from '../data/schedule';
 
 // Adicionado para alinhar com a data de início real do curso
@@ -64,6 +65,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, workshops }) => 
     
     return allClasses.sort((a, b) => a.date.getTime() - b.date.getTime());
   }, []);
+  
+  const recentStudents = useMemo(() => {
+    return [...students]
+      .sort((a, b) => new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime())
+      .slice(0, 5);
+  }, [students]);
 
   return (
     <div className="p-8">
@@ -84,28 +91,57 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, workshops }) => 
         />
       </div>
 
-      <div className="bg-surface p-6 rounded-lg shadow-sm">
-        <h3 className="text-xl font-semibold text-on-surface mb-4">Próximas Aulas da Grade</h3>
-        {upcomingFixedClasses.length > 0 ? (
-          <ul className="divide-y divide-slate-200">
-            {upcomingFixedClasses.slice(0, 5).map(c => (
-              <li key={c.id} className="py-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold text-primary">{c.name}</p>
-                    <p className="text-sm text-on-surface-secondary">Prof. {c.teacher}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-surface p-6 rounded-lg shadow-sm">
+          <h3 className="text-xl font-semibold text-on-surface mb-4">Próximas Aulas da Grade</h3>
+          {upcomingFixedClasses.length > 0 ? (
+            <ul className="divide-y divide-slate-200">
+              {upcomingFixedClasses.slice(0, 5).map(c => (
+                <li key={c.id} className="py-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold text-primary">{c.name}</p>
+                      <p className="text-sm text-on-surface-secondary">Prof. {c.teacher}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-on-surface">{c.date.toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})}</p>
+                      <p className="text-sm text-on-surface-secondary">{c.date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', timeZone: 'America/Sao_Paulo'})}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-on-surface">{c.date.toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})}</p>
-                    <p className="text-sm text-on-surface-secondary">{c.date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', timeZone: 'America/Sao_Paulo'})}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-center text-on-surface-secondary py-8">O curso foi encerrado. Nenhuma aula futura encontrada.</p>
+          )}
+        </div>
+
+        <div className="bg-surface p-6 rounded-lg shadow-sm">
+          <h3 className="text-xl font-semibold text-on-surface mb-4 flex items-center">
+            <UserPlusIcon className="w-6 h-6 mr-2 text-on-surface-secondary" />
+            Alunos Recentes
+          </h3>
+          {recentStudents.length > 0 ? (
+            <ul className="divide-y divide-slate-200">
+              {recentStudents.map(student => (
+                <li key={student.id} className="py-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold text-sky-500">{student.name}</p>
+                      <p className="text-sm text-on-surface-secondary">{student.workshopName || 'Aluno Avulso'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-on-surface">Matrícula</p>
+                      <p className="text-sm text-on-surface-secondary">{new Date(student.registrationDate).toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})}</p>
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-center text-on-surface-secondary py-8">O curso foi encerrado. Nenhuma aula futura encontrada.</p>
-        )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-center text-on-surface-secondary py-8">Nenhum aluno cadastrado recentemente.</p>
+          )}
+        </div>
       </div>
     </div>
   );
