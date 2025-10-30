@@ -7,7 +7,7 @@ import { Schedule } from './components/Schedule';
 import { Syllabus } from './components/Syllabus';
 import { StudentProfile } from './components/StudentProfile';
 import { Auth } from './components/Auth';
-import type { Student, Workshop, LessonPlan, StudentNote, Attendance, Syllabus as SyllabusType } from './types';
+import type { Student, Workshop, LessonPlan, StudentNote, Attendance, WorkshopLessonPlan } from './types';
 import { MenuIcon } from './components/icons/MenuIcon';
 import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
 // FIX: Use Firebase v8 namespaced API.
@@ -42,7 +42,7 @@ const AppContent: React.FC = () => {
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [studentNotes, setStudentNotes] = useState<StudentNote[]>([]);
   const [attendances, setAttendances] = useState<Attendance[]>([]);
-  const [syllabi, setSyllabi] = useState<SyllabusType[]>([]);
+  const [workshopLessonPlans, setWorkshopLessonPlans] = useState<WorkshopLessonPlan[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   
   const [user, setUser] = useState<firebase.User | null>(null);
@@ -104,7 +104,7 @@ const AppContent: React.FC = () => {
       setLessonPlans([]);
       setStudentNotes([]);
       setAttendances([]);
-      setSyllabi([]);
+      setWorkshopLessonPlans([]);
       return;
     }
 
@@ -167,9 +167,9 @@ const AppContent: React.FC = () => {
       setAttendances(attendanceData);
     }));
 
-    unsubs.push(db.collection('syllabi').onSnapshot((querySnapshot) => {
-        const syllabiData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SyllabusType));
-        setSyllabi(syllabiData);
+    unsubs.push(db.collection('workshopLessonPlans').onSnapshot((querySnapshot) => {
+        const plansData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkshopLessonPlan));
+        setWorkshopLessonPlans(plansData);
     }));
 
     // Cleanup function
@@ -253,13 +253,13 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const saveSyllabus = async (syllabusData: SyllabusType) => {
+  const saveWorkshopLessonPlan = async (planData: WorkshopLessonPlan) => {
     try {
-      await db.collection('syllabi').doc(syllabusData.id).set(syllabusData);
-      addToast('Conteúdo programático salvo com sucesso!', 'success');
+      await db.collection('workshopLessonPlans').doc(planData.id).set(planData);
+      addToast('Plano de aula salvo com sucesso!', 'success');
     } catch (error) {
-      console.error("Erro ao salvar conteúdo programático: ", error);
-      addToast('Falha ao salvar o conteúdo.', 'error');
+      console.error("Erro ao salvar plano de aula: ", error);
+      addToast('Falha ao salvar o plano de aula.', 'error');
     }
   };
   
@@ -304,7 +304,7 @@ const AppContent: React.FC = () => {
       case 'students': return <Students students={students} onAdd={addStudent} onUpdate={updateStudent} onDelete={deleteStudent} onSelectStudent={handleSelectStudent} isAdmin={isAdmin} />;
       case 'workshops': return <Workshops workshops={derivedWorkshops} students={students} />;
       case 'schedule': return <Schedule lessonPlans={lessonPlans} onSavePlan={saveLessonPlan} students={students} attendances={attendances} onSaveAttendance={saveAttendance} isAdmin={isAdmin} />;
-      case 'syllabus': return <Syllabus workshops={derivedWorkshops} syllabi={syllabi} onSaveSyllabus={saveSyllabus} isAdmin={isAdmin} />;
+      case 'syllabus': return <Syllabus workshops={derivedWorkshops} lessonPlans={workshopLessonPlans} onSaveLessonPlan={saveWorkshopLessonPlan} isAdmin={isAdmin} />;
       default: return <Dashboard students={students} workshops={derivedWorkshops} />;
     }
   };

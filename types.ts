@@ -41,10 +41,9 @@ export interface Attendance {
   };
 }
 
-export interface Syllabus {
-  id: string; // composite key: workshopId-year-month
+export interface WorkshopLessonPlan {
+  id: string; // composite key: workshopId-lessonNumber
   workshopId: string;
-  year: number;
-  month: number; // 1-12
+  lessonNumber: number;
   content: string;
 }
