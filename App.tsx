@@ -7,7 +7,7 @@ import { Schedule } from './components/Schedule';
 import { Syllabus } from './components/Syllabus';
 import { StudentProfile } from './components/StudentProfile';
 import { Auth } from './components/Auth';
-import type { Student, Workshop, LessonPlan, StudentNote, Attendance, WorkshopLessonPlan } from './types';
+import type { Student, Workshop, LessonPlan, StudentNote, Attendance, WorkshopLessonPlan, MusicClass } from './types';
 import { MenuIcon } from './components/icons/MenuIcon';
 import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
 // FIX: Use Firebase v8 namespaced API.
@@ -39,6 +39,7 @@ const AppContent: React.FC = () => {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   
   const [students, setStudents] = useState<Student[]>([]);
+  const [musicClasses, setMusicClasses] = useState<MusicClass[]>([]);
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [studentNotes, setStudentNotes] = useState<StudentNote[]>([]);
   const [attendances, setAttendances] = useState<Attendance[]>([]);
@@ -101,6 +102,7 @@ const AppContent: React.FC = () => {
     if (!user) {
       setDataLoading(false);
       setStudents([]);
+      setMusicClasses([]);
       setLessonPlans([]);
       setStudentNotes([]);
       setAttendances([]);
@@ -151,6 +153,11 @@ const AppContent: React.FC = () => {
     ));
 
     // Setup other listeners
+    unsubs.push(db.collection('classes').onSnapshot((querySnapshot) => {
+        const classesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MusicClass));
+        setMusicClasses(classesData);
+    }));
+
     unsubs.push(db.collection('lessonPlans').onSnapshot((querySnapshot) => {
       const lessonPlansData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as LessonPlan));
       setLessonPlans(lessonPlansData);
@@ -303,7 +310,7 @@ const AppContent: React.FC = () => {
       case 'dashboard': return <Dashboard students={students} workshops={derivedWorkshops} />;
       case 'students': return <Students students={students} onAdd={addStudent} onUpdate={updateStudent} onDelete={deleteStudent} onSelectStudent={handleSelectStudent} isAdmin={isAdmin} />;
       case 'workshops': return <Workshops workshops={derivedWorkshops} students={students} />;
-      case 'schedule': return <Schedule lessonPlans={lessonPlans} onSavePlan={saveLessonPlan} students={students} attendances={attendances} onSaveAttendance={saveAttendance} isAdmin={isAdmin} />;
+      case 'schedule': return <Schedule musicClasses={musicClasses} lessonPlans={lessonPlans} onSavePlan={saveLessonPlan} students={students} attendances={attendances} onSaveAttendance={saveAttendance} isAdmin={isAdmin} />;
       case 'syllabus': return <Syllabus workshops={derivedWorkshops} lessonPlans={workshopLessonPlans} onSaveLessonPlan={saveWorkshopLessonPlan} isAdmin={isAdmin} />;
       default: return <Dashboard students={students} workshops={derivedWorkshops} />;
     }

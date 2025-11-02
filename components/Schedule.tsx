@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { LessonPlan, Student, Attendance, AttendanceStatus, FullClassInfo } from '../types';
+import type { LessonPlan, Student, Attendance, AttendanceStatus, FullClassInfo, MusicClass } from '../types';
 import { Modal } from './Modal';
 import { ClipboardDocumentListIcon } from './icons/ClipboardDocumentListIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
@@ -9,6 +9,7 @@ import { DownloadIcon } from './icons/DownloadIcon';
 
 
 interface ScheduleProps {
+  musicClasses: MusicClass[];
   lessonPlans: LessonPlan[];
   onSavePlan: (plan: LessonPlan) => Promise<void>;
   students: Student[];
@@ -91,7 +92,7 @@ const AttendanceForm: React.FC<{
 };
 
 
-export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, students, attendances, onSaveAttendance, isAdmin }) => {
+export const Schedule: React.FC<ScheduleProps> = ({ musicClasses, lessonPlans, onSavePlan, students, attendances, onSaveAttendance, isAdmin }) => {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
 
@@ -107,6 +108,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
   const [endDate, setEndDate] = useState('');
   const [viewMode, setViewMode] = useState<'upcoming' | 'past'>('upcoming');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [extraClassesLoaded, setExtraClassesLoaded] = useState(false);
 
   const uniqueTeachers = useMemo(() => {
     const teachers = new Set(weeklySchedule.map(c => c.teacher));
@@ -128,7 +130,6 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
           const startTime = scheduleItem.time.split(' ')[0];
           const [hours, minutes] = startTime.split(':').map(Number);
           const classDate = new Date(currentDate);
-          // Ajusta o horário para UTC, considerando que o horário da grade é de São Paulo (UTC-3)
           classDate.setUTCHours(hours + SAO_PAULO_OFFSET_HOURS, minutes, 0, 0);
           
           classesRaw.push({
@@ -144,7 +145,6 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }
     
-    // Group by class name to enumerate
     const classesByName: { [key: string]: typeof classesRaw } = {};
     for (const cls of classesRaw) {
       if (!classesByName[cls.name]) {
@@ -153,7 +153,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
       classesByName[cls.name].push(cls);
     }
 
-    const enumeratedClasses: FullClassInfo[] = [];
+    const enumeratedClasses: any[] = [];
     Object.keys(classesByName).forEach(className => {
       const sortedGroup = classesByName[className].sort((a, b) => a.date.getTime() - b.date.getTime());
       sortedGroup.forEach((cls, index) => {
@@ -161,8 +161,28 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
       });
     });
 
-    return enumeratedClasses;
-  }, []);
+    const fixedClasses: FullClassInfo[] = enumeratedClasses.map(cls => ({...cls, isExtra: false}));
+
+    if (!extraClassesLoaded) {
+        return fixedClasses;
+    }
+
+    const extraClasses: FullClassInfo[] = musicClasses.map(mc => {
+        const classDate = new Date(mc.date);
+        return {
+            id: mc.id,
+            name: mc.topic,
+            teacher: mc.teacher,
+            date: classDate,
+            day: classDate.getUTCDay(),
+            time: classDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit', timeZone: 'America/Sao_Paulo'}),
+            isExtra: true,
+            studentIds: mc.studentIds,
+        };
+    });
+
+    return [...fixedClasses, ...extraClasses];
+  }, [musicClasses, extraClassesLoaded]);
   
   const filteredClasses = useMemo(() => {
       return allClasses.filter(c => {
@@ -206,7 +226,10 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
   };
 
   const openAttendanceModal = (cls: FullClassInfo) => {
-    const studentsInClass = students.filter(s => s.workshopName === cls.name);
+    const studentsInClass = cls.isExtra
+        ? students.filter(s => cls.studentIds?.includes(s.id))
+        : students.filter(s => s.workshopName === cls.name);
+
     const existingAttendance = attendances.find(a => a.classId === cls.id) || { classId: cls.id, records: {} };
     
     setSelectedClass(cls);
@@ -243,6 +266,10 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
     } finally {
         setIsGeneratingPdf(false);
     }
+  };
+  
+  const handleLoadExtraClasses = () => {
+    setExtraClassesLoaded(true);
   };
 
   const renderClassList = (classList: FullClassInfo[]) => {
@@ -286,20 +313,20 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
                 {formattedDate}
               </h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {classesForDay.map(c => {
+                {classesForDay.sort((a,b) => a.date.getTime() - b.date.getTime()).map(c => {
                   const hasPlan = lessonPlans.some(p => p.classId === c.id && p.content.trim() !== '');
                   const attendanceRecord = attendances.find(a => a.classId === c.id);
                   const hasAttendance = attendanceRecord && Object.keys(attendanceRecord.records).length > 0;
                   const colors = getWorkshopColorStyle(c.name);
   
                   return (
-                    <div key={c.id} className={`bg-surface rounded-lg shadow-md border-l-4 ${colors.border} flex flex-col overflow-hidden`}>
+                    <div key={c.id} className={`bg-surface rounded-lg shadow-md border-l-4 ${c.isExtra ? 'border-secondary' : colors.border} flex flex-col overflow-hidden`}>
                       <div className="p-4 flex-1">
                         <div className="flex justify-between items-start">
                           <div>
                             <p className="font-bold text-lg text-on-surface">{c.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}</p>
-                            <p className={`font-semibold ${colors.text}`}>{c.name}</p>
-                            <p className="text-sm text-on-surface-secondary">Aula {String(c.aulaNumber).padStart(2, '0')} &bull; Prof. {c.teacher}</p>
+                            <p className={`font-semibold ${c.isExtra ? 'text-secondary' : colors.text}`}>{c.name}</p>
+                            <p className="text-sm text-on-surface-secondary">{c.isExtra ? 'Aula Avulsa' : `Aula ${String(c.aulaNumber).padStart(2, '0')}`} &bull; Prof. {c.teacher}</p>
                           </div>
                           <div className="flex items-center space-x-2">
                             {hasPlan && (
@@ -340,7 +367,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
       <h2 className="text-3xl font-bold text-on-surface mb-6">Horário das Aulas</h2>
       
       <div className="bg-surface p-4 rounded-lg shadow-sm mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 items-end">
               <div className="lg:col-span-1">
                   <label htmlFor="teacher-filter" className="block text-sm font-medium text-on-surface-secondary mb-1">
                       Professor
@@ -396,6 +423,19 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
                       onChange={(e) => setEndDate(e.target.value)}
                       className="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm bg-surface text-on-surface"
                   />
+              </div>
+               <div className="lg:col-span-1">
+                    <button
+                        onClick={handleLoadExtraClasses}
+                        disabled={extraClassesLoaded}
+                        className="w-full px-4 py-2 text-sm font-medium text-secondary bg-secondary/10 border border-secondary/20 rounded-md shadow-sm hover:bg-secondary/20 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 12v4m-2-2h4" />
+                        </svg>
+                        {extraClassesLoaded ? 'Avulsas OK' : 'Ver Avulsas'}
+                    </button>
               </div>
               <div className="lg:col-span-1">
                   <button 

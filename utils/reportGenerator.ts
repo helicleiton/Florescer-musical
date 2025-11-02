@@ -175,13 +175,16 @@ export const generateAttendanceReportPDF = (
   let y = 35;
 
   classes.forEach((cls, index) => {
-    const studentsInClass = students.filter(s => s.workshopName === cls.name);
+    const studentsInClass = cls.isExtra
+        ? students.filter(s => cls.studentIds?.includes(s.id))
+        : students.filter(s => s.workshopName === cls.name);
+
     if (studentsInClass.length === 0) return;
 
     const attendanceRecord = attendances.find(a => a.classId === cls.id)?.records || {};
 
     const classHeader = [
-      `${cls.name} - Aula ${String(cls.aulaNumber).padStart(2, '0')}`,
+      `${cls.name} - ${cls.isExtra ? 'Aula Avulsa' : `Aula ${String(cls.aulaNumber).padStart(2, '0')}`}`,
       `Data: ${cls.date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`,
       `Professor: ${cls.teacher}`
     ];

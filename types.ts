@@ -26,7 +26,7 @@ export interface MusicClass {
 }
 
 export interface StudentNote {
-  id: string;
+  id:string;
   studentId: string;
   content: string;
   date: string; // ISO string
@@ -55,11 +55,18 @@ export interface WeeklyClass {
   teacher: string;
 }
 
-export interface FullClassInfo extends WeeklyClass {
-    id: string;
-    date: Date;
-    aulaNumber: number;
+export interface FullClassInfo {
+  id: string;
+  name: string;
+  teacher: string;
+  date: Date;
+  day: number;
+  time: string;
+  aulaNumber?: number;
+  isExtra: boolean;
+  studentIds?: string[];
 }
+
 
 declare global {
   interface Window {
