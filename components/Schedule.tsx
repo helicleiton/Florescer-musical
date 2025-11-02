@@ -29,10 +29,10 @@ const courseEndDate = new Date('2026-05-01T02:59:59Z');   // Representa 23:59:59
 
 const getWorkshopColorStyle = (className: string) => {
   const lowerCaseName = className.toLowerCase();
-  if (lowerCaseName.includes('teclado')) return { text: 'text-sky-500', icon: 'text-sky-500' };
-  if (lowerCaseName.includes('violão')) return { text: 'text-amber-500', icon: 'text-amber-500' };
-  if (lowerCaseName.includes('vocal')) return { text: 'text-rose-500', icon: 'text-rose-500' };
-  return { text: 'text-primary', icon: 'text-primary' }; // Musicalização
+  if (lowerCaseName.includes('teclado')) return { text: 'text-sky-500', border: 'border-sky-500' };
+  if (lowerCaseName.includes('violão')) return { text: 'text-amber-500', border: 'border-amber-500' };
+  if (lowerCaseName.includes('vocal')) return { text: 'text-rose-500', border: 'border-rose-500' };
+  return { text: 'text-primary', border: 'border-primary' }; // Musicalização
 };
 
 const AttendanceForm: React.FC<{
@@ -231,66 +231,95 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
     setEndDate('');
   };
 
-  const renderClassList = (classList: FullClassInfo[], title: string) => (
-    <div className="bg-surface p-6 rounded-lg shadow-sm">
-      <h3 className="text-xl font-semibold text-on-surface mb-4 sr-only">{title}</h3>
-      {classList.length > 0 ? (
-        <ul className="divide-y divide-slate-200">
-          {classList.map(c => {
-            const hasPlan = lessonPlans.some(p => p.classId === c.id && p.content.trim() !== '');
-            const attendanceRecord = attendances.find(a => a.classId === c.id);
-            const hasAttendance = attendanceRecord && Object.keys(attendanceRecord.records).length > 0;
-            const colors = getWorkshopColorStyle(c.name);
-            return (
-              <li key={c.id} className="py-4">
-                <div className="flex flex-wrap justify-between items-center gap-x-4 gap-y-2">
-                    {/* Left side: Class info and status tags */}
-                    <div className="flex-1 min-w-[250px]">
-                        <p className={`font-semibold ${colors.text}`}>{c.name} - Aula {String(c.aulaNumber).padStart(2, '0')}</p>
-                        <p className="text-sm text-on-surface-secondary">Prof. {c.teacher}</p>
-                        {(hasPlan || hasAttendance) && (
-                            <div className="flex items-center space-x-2 mt-2">
-                                {hasPlan && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800" title="Plano de aula preenchido">
-                                        <ClipboardDocumentListIcon className="w-3 h-3 mr-1" />
-                                        Plano de Aula
-                                    </span>
-                                )}
-                                {hasAttendance && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Frequência preenchida">
-                                        <CheckCircleIcon className="w-3 h-3 mr-1" />
-                                        Frequência
-                                    </span>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    
-                    {/* Right side: Date and action buttons */}
-                    <div className="flex items-center space-x-4 flex-shrink-0">
-                        <div className="text-right">
-                            <p className="font-medium text-on-surface">{c.date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
-                            <p className="text-sm text-on-surface-secondary">{c.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}</p>
+  const renderClassList = (classList: FullClassInfo[]) => {
+    const groupClassesByDay = (classes: FullClassInfo[]): Map<string, FullClassInfo[]> => {
+      const groups = new Map<string, FullClassInfo[]>();
+      classes.forEach(cls => {
+          const dateKey = cls.date.toISOString().split('T')[0];
+          if (!groups.has(dateKey)) {
+              groups.set(dateKey, []);
+          }
+          groups.get(dateKey)!.push(cls);
+      });
+      return groups;
+    };
+  
+    const groupedClasses = groupClassesByDay(classList);
+  
+    if (groupedClasses.size === 0) {
+      return (
+        <div className="text-center text-on-surface-secondary py-16 bg-surface rounded-lg shadow-sm">
+          <p>Nenhuma aula encontrada com os filtros selecionados.</p>
+        </div>
+      );
+    }
+  
+    return (
+      <div className="space-y-8">
+        {Array.from(groupedClasses.entries()).map(([dateKey, classesForDay]) => {
+          const date = new Date(`${dateKey}T00:00:00`);
+          const formattedDate = date.toLocaleDateString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+  
+          return (
+            <div key={dateKey}>
+              <h3 className="text-xl font-bold text-on-surface mb-4 pb-2 border-b-2 border-primary/20 capitalize">
+                {formattedDate}
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {classesForDay.map(c => {
+                  const hasPlan = lessonPlans.some(p => p.classId === c.id && p.content.trim() !== '');
+                  const attendanceRecord = attendances.find(a => a.classId === c.id);
+                  const hasAttendance = attendanceRecord && Object.keys(attendanceRecord.records).length > 0;
+                  const colors = getWorkshopColorStyle(c.name);
+  
+                  return (
+                    <div key={c.id} className={`bg-surface rounded-lg shadow-md border-l-4 ${colors.border} flex flex-col overflow-hidden`}>
+                      <div className="p-4 flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-lg text-on-surface">{c.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}</p>
+                            <p className={`font-semibold ${colors.text}`}>{c.name}</p>
+                            <p className="text-sm text-on-surface-secondary">Aula {String(c.aulaNumber).padStart(2, '0')} &bull; Prof. {c.teacher}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {hasPlan && (
+                              <div className="p-1.5 bg-sky-100 rounded-full" title="Plano de aula preenchido">
+                                <ClipboardDocumentListIcon className="w-5 h-5 text-sky-600" />
+                              </div>
+                            )}
+                            {hasAttendance && (
+                              <div className="p-1.5 bg-green-100 rounded-full" title="Frequência preenchida">
+                                <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex flex-col space-y-1.5">
-                            <button onClick={() => openAttendanceModal(c)} className="px-3 py-1 text-xs font-medium text-primary border border-primary rounded-md hover:bg-primary/10 transition-colors whitespace-nowrap">
-                                Frequência
-                            </button>
-                            <button onClick={() => openPlanModal(c)} className="px-3 py-1 text-xs font-medium text-secondary border border-secondary rounded-md hover:bg-secondary/10 transition-colors whitespace-nowrap">
-                                {hasPlan ? 'Ver Plano' : 'Planejar'}
-                            </button>
-                        </div>
+                      </div>
+                      <div className="bg-slate-50/70 p-3 grid grid-cols-2 gap-2 border-t border-slate-200">
+                          <button onClick={() => openAttendanceModal(c)} className="w-full px-3 py-1.5 text-sm font-medium text-primary border border-primary/50 rounded-md hover:bg-primary/10 transition-colors whitespace-nowrap">
+                              Frequência
+                          </button>
+                          <button onClick={() => openPlanModal(c)} className="w-full px-3 py-1.5 text-sm font-medium text-secondary border border-secondary/50 rounded-md hover:bg-secondary/10 transition-colors whitespace-nowrap">
+                              {hasPlan ? 'Ver Plano' : 'Planejar'}
+                          </button>
+                      </div>
                     </div>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      ) : (
-        <p className="text-center text-on-surface-secondary py-8">Nenhuma aula encontrada com os filtros selecionados.</p>
-      )}
-    </div>
-  );
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+  
 
   return (
     <div className="p-8">
@@ -419,9 +448,9 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
           </nav>
         </div>
       </div>
-
-      {viewMode === 'upcoming' && renderClassList(upcomingClasses, "Aulas Futuras")}
-      {viewMode === 'past' && renderClassList(pastClasses, "Aulas Passadas")}
+      
+      {viewMode === 'upcoming' && renderClassList(upcomingClasses)}
+      {viewMode === 'past' && renderClassList(pastClasses)}
 
       <Modal 
         isOpen={isPlanModalOpen} 
