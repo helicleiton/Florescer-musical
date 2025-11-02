@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Workshop, WorkshopLessonPlan } from '../types';
+import { generateSyllabusPDF } from '../utils/reportGenerator';
+import { DownloadIcon } from './icons/DownloadIcon';
 
 interface LessonPlanningProps {
   workshops: Workshop[];
@@ -91,6 +93,11 @@ export const Syllabus: React.FC<LessonPlanningProps> = ({ workshops, lessonPlans
         setLocalLessonPlans(prev => prev.filter(p => p.id !== planToSave.id));
     };
 
+    const handleGenerateReport = (workshop: Workshop) => {
+        const plansForWorkshop = allPlans.filter(p => p.workshopId === workshop.id);
+        generateSyllabusPDF(workshop, plansForWorkshop);
+    };
+
     return (
         <div className="p-8">
         <h2 className="text-3xl font-bold text-on-surface mb-6">Planejamento de Aulas</h2>
@@ -104,7 +111,16 @@ export const Syllabus: React.FC<LessonPlanningProps> = ({ workshops, lessonPlans
                 return (
                     <div key={workshop.id} className="bg-surface rounded-lg shadow-sm overflow-hidden">
                         <div className="p-6">
-                            <h3 className="text-xl font-bold text-primary mb-4">{workshop.name}</h3>
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="text-xl font-bold text-primary">{workshop.name}</h3>
+                                <button
+                                    onClick={() => handleGenerateReport(workshop)}
+                                    className="px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-md shadow-sm hover:bg-primary/20 flex items-center"
+                                >
+                                    <DownloadIcon className="h-4 w-4 mr-2" />
+                                    Gerar PDF
+                                </button>
+                            </div>
                             {plansForWorkshop.length > 0 ? (
                                 <div className="space-y-4">
                                 {plansForWorkshop.map(plan => (

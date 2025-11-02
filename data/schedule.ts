@@ -1,9 +1,4 @@
-export interface WeeklyClass {
-  day: number;
-  time: string;
-  name: string;
-  teacher: string;
-}
+import type { WeeklyClass } from '../types';
 
 export const weeklySchedule: WeeklyClass[] = [
   // Terça-feira

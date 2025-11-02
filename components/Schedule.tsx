@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { LessonPlan, Student, Attendance, AttendanceStatus } from '../types';
+import type { LessonPlan, Student, Attendance, AttendanceStatus, FullClassInfo } from '../types';
 import { Modal } from './Modal';
 import { ClipboardDocumentListIcon } from './icons/ClipboardDocumentListIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
-import type { WeeklyClass } from '../data/schedule';
 import { weeklySchedule, dayNames } from '../data/schedule';
+import { generateAttendanceReportPDF } from '../utils/reportGenerator';
+import { DownloadIcon } from './icons/DownloadIcon';
 
 
 interface ScheduleProps {
@@ -16,15 +17,10 @@ interface ScheduleProps {
   isAdmin: boolean;
 }
 
-interface FullClassInfo extends WeeklyClass {
-    id: string;
-    date: Date;
-    aulaNumber: number;
-}
-
 const SAO_PAULO_OFFSET_HOURS = 3;
 // As datas de início/fim do curso agora estão em UTC, representando o momento exato em São Paulo
-const courseStartDate = new Date('2025-11-01T03:00:00Z'); // Representa 00:00 de 1 de Nov em SP
+// A aula inaugural foi em 01/11, as aulas regulares começam em 04/11.
+const courseStartDate = new Date('2025-11-04T03:00:00Z');   // Representa 00:00 de 4 de Nov em SP
 const courseEndDate = new Date('2026-05-01T02:59:59Z');   // Representa 23:59:59 de 30 de Abr em SP
 
 const getWorkshopColorStyle = (className: string) => {
@@ -110,6 +106,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [viewMode, setViewMode] = useState<'upcoming' | 'past'>('upcoming');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const uniqueTeachers = useMemo(() => {
     const teachers = new Set(weeklySchedule.map(c => c.teacher));
@@ -230,6 +227,23 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
     setStartDate('');
     setEndDate('');
   };
+  
+  const handleGenerateReport = async () => {
+    const classesToReport = pastClasses;
+    if (classesToReport.length === 0) {
+        alert("Não há aulas passadas (com os filtros atuais) para gerar um relatório.");
+        return;
+    }
+    setIsGeneratingPdf(true);
+    try {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        generateAttendanceReportPDF(classesToReport, students, attendances);
+    } catch (error) {
+        console.error("Failed to generate PDF report:", error);
+    } finally {
+        setIsGeneratingPdf(false);
+    }
+  };
 
   const renderClassList = (classList: FullClassInfo[]) => {
     const groupClassesByDay = (classes: FullClassInfo[]): Map<string, FullClassInfo[]> => {
@@ -326,7 +340,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
       <h2 className="text-3xl font-bold text-on-surface mb-6">Horário das Aulas</h2>
       
       <div className="bg-surface p-4 rounded-lg shadow-sm mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
               <div className="lg:col-span-1">
                   <label htmlFor="teacher-filter" className="block text-sm font-medium text-on-surface-secondary mb-1">
                       Professor
@@ -389,6 +403,16 @@ export const Schedule: React.FC<ScheduleProps> = ({ lessonPlans, onSavePlan, stu
                       className="w-full px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md shadow-sm hover:bg-slate-200"
                   >
                       Limpar Filtros
+                  </button>
+              </div>
+              <div className="lg:col-span-1">
+                  <button 
+                      onClick={handleGenerateReport}
+                      disabled={isGeneratingPdf}
+                      className="w-full px-4 py-2 text-sm font-medium text-primary bg-primary/10 border border-primary/20 rounded-md shadow-sm hover:bg-primary/20 flex items-center justify-center disabled:opacity-50 disabled:cursor-wait"
+                  >
+                      <DownloadIcon className="h-5 w-5 mr-2" />
+                      {isGeneratingPdf ? 'Gerando...' : 'Relatório'}
                   </button>
               </div>
           </div>

@@ -47,3 +47,22 @@ export interface WorkshopLessonPlan {
   lessonNumber: number;
   content: string;
 }
+
+export interface WeeklyClass {
+  day: number;
+  time: string;
+  name: string;
+  teacher: string;
+}
+
+export interface FullClassInfo extends WeeklyClass {
+    id: string;
+    date: Date;
+    aulaNumber: number;
+}
+
+declare global {
+  interface Window {
+    jspdf: any;
+  }
+}

@@ -3,6 +3,8 @@ import type { Student } from '../types';
 import { Modal } from './Modal';
 import { weeklySchedule, dayNames } from '../data/schedule';
 import { SearchIcon } from './icons/SearchIcon';
+import { DownloadIcon } from './icons/DownloadIcon';
+import { generateStudentListPDF } from '../utils/reportGenerator';
 
 interface StudentsProps {
   students: Student[];
@@ -75,6 +77,7 @@ export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, o
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const filteredStudents = useMemo(() => {
     if (!searchTerm) {
@@ -155,20 +158,42 @@ export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, o
     setEditingStudent(student);
     setIsModalOpen(true);
   };
+
+  const handleGenerateReport = async () => {
+    setIsGeneratingPdf(true);
+    try {
+        await new Promise(resolve => setTimeout(resolve, 100)); // Short delay for UI update
+        generateStudentListPDF(filteredStudents);
+    } catch (error) {
+        console.error("Failed to generate PDF report:", error);
+    } finally {
+        setIsGeneratingPdf(false);
+    }
+  };
   
   return (
     <div className="p-8 flex flex-col h-full">
       <div className="flex-shrink-0">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <h2 className="text-3xl font-bold text-on-surface">Alunos</h2>
-          {isAdmin && (
-            <button onClick={openAddModal} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
-              Adicionar Aluno
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={handleGenerateReport} 
+              disabled={isGeneratingPdf}
+              className="px-4 py-2 text-sm font-medium text-primary bg-primary/10 border border-primary/20 rounded-md shadow-sm hover:bg-primary/20 flex items-center disabled:opacity-50 disabled:cursor-wait"
+            >
+              <DownloadIcon className="h-5 w-5 mr-2" />
+              {isGeneratingPdf ? 'Gerando...' : 'Gerar Relatório'}
             </button>
-          )}
+            {isAdmin && (
+              <button onClick={openAddModal} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Adicionar Aluno
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mb-6">

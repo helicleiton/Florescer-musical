@@ -6,8 +6,8 @@ import { UserPlusIcon } from './icons/UserPlusIcon';
 import { weeklySchedule } from '../data/schedule';
 import { ChartBarIcon } from './icons/ChartBarIcon';
 
-// Adicionado para alinhar com a data de início real do curso
-const courseStartDate = new Date('2025-11-01T03:00:00Z'); // Representa 00:00 de 1 de Nov em SP
+// A data de início foi ajustada para 04/11/2025, pois 01/11 foi a aula inaugural.
+const courseStartDate = new Date('2025-11-04T03:00:00Z'); // Representa 00:00 de 4 de Nov em SP
 
 interface DashboardProps {
   students: Student[];
