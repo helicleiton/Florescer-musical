@@ -1,4 +1,5 @@
 import type { Student, Workshop, WorkshopLessonPlan, FullClassInfo, Attendance, AttendanceStatus } from '../types';
+import { weeklySchedule, dayNames } from '../data/schedule';
 
 // The 'jspdf' and 'jspdf-autotable' libraries are loaded from a CDN in index.html.
 // TypeScript is aware of `window.jspdf` via the global declaration in `types.ts`.
@@ -49,28 +50,78 @@ const getStatusText = (status: AttendanceStatus | undefined): string => {
 // Report for Student List
 export const generateStudentListPDF = (students: Student[]) => {
   const doc = new window.jspdf.jsPDF();
-  const tableColumn = ["Nome", "Idade", "Oficina", "Data de Matrícula"];
-  const tableRows: (string | number)[][] = [];
-
+  
+  const groupedStudents: { [key: string]: Student[] } = {};
   students.forEach(student => {
-    const studentData = [
-      student.name,
-      student.age,
-      student.workshopName || 'Aluno Avulso',
-      new Date(student.registrationDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-    ];
-    tableRows.push(studentData);
+    const groupName = student.workshopName || 'Alunos Avulsos';
+    if (!groupedStudents[groupName]) {
+      groupedStudents[groupName] = [];
+    }
+    groupedStudents[groupName].push(student);
+  });
+  
+  const scheduleOrder = weeklySchedule.map(item => item.name);
+  const sortedGroupNames = Object.keys(groupedStudents).sort((a, b) => {
+    if (a === 'Alunos Avulsos') return 1;
+    if (b === 'Alunos Avulsos') return -1;
+    const indexA = scheduleOrder.indexOf(a);
+    const indexB = scheduleOrder.indexOf(b);
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    return a.localeCompare(b);
   });
 
-  (doc as any).autoTable({
-    head: [tableColumn],
-    body: tableRows,
-    startY: 35,
-    theme: 'grid',
-    headStyles: { fillColor: [16, 185, 129] }, // #10b981 (primary color)
+  let startY = 35;
+
+  sortedGroupNames.forEach(groupName => {
+    const studentsInGroup = groupedStudents[groupName];
+    const workshopInfo = weeklySchedule.find(w => w.name === groupName);
+    
+    // Check for page break before adding group title
+    if (startY > doc.internal.pageSize.getHeight() - 40) {
+      doc.addPage();
+      startY = 35; // Reset Y for the new page
+    }
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(16, 185, 129); // Primary color
+    doc.text(groupName, 14, startY);
+    startY += 6;
+
+    if (workshopInfo) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      const subtitle = `${dayNames[workshopInfo.day]}, ${workshopInfo.time} – Prof. ${workshopInfo.teacher}`;
+      doc.text(subtitle, 14, startY);
+      startY += 8;
+    } else {
+        startY += 2;
+    }
+
+    const tableColumn = ["Nome", "Idade", "Data de Matrícula"];
+    const tableRows = studentsInGroup
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(student => [
+        student.name,
+        student.age,
+        new Date(student.registrationDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+      ]);
+
+    (doc as any).autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: startY,
+      theme: 'grid',
+      headStyles: { fillColor: [16, 185, 129] }, // #10b981
+    });
+    
+    startY = (doc as any).lastAutoTable.finalY + 15;
   });
 
-  addHeaderAndFooter(doc, 'Relatório de Alunos');
+  addHeaderAndFooter(doc, 'Relatório de Alunos por Turma');
   doc.save('relatorio_alunos_florescer_musical.pdf');
 };
 
