@@ -4,6 +4,64 @@ import { weeklySchedule, dayNames } from '../data/schedule';
 // The 'jspdf' and 'jspdf-autotable' libraries are loaded from a CDN in index.html.
 // TypeScript is aware of `window.jspdf` via the global declaration in `types.ts`.
 
+const SAO_PAULO_OFFSET_HOURS = 3;
+const courseStartDate = new Date('2025-11-04T03:00:00Z');
+const courseEndDate = new Date('2026-05-01T02:59:59Z');
+
+export const getWorkshopNameFromClassName = (className: string): string => {
+  const parts = className.split(' ');
+  if (parts.length > 1 && /^[A-Z]$/.test(parts[parts.length - 1])) {
+    return parts.slice(0, -1).join(' ');
+  }
+  return className;
+};
+
+export const generateAllFixedClasses = (): FullClassInfo[] => {
+    const classesRaw: Omit<FullClassInfo, 'aulaNumber' | 'isExtra' | 'studentIds'>[] = [];
+    let currentDate = new Date(courseStartDate);
+
+    while (currentDate <= courseEndDate) {
+        const dayOfWeek = currentDate.getUTCDay();
+        for (const scheduleItem of weeklySchedule) {
+            if (scheduleItem.day === dayOfWeek) {
+                const startTime = scheduleItem.time.split(' ')[0];
+                const [hours, minutes] = startTime.split(':').map(Number);
+                const classDate = new Date(currentDate);
+                classDate.setUTCHours(hours + SAO_PAULO_OFFSET_HOURS, minutes, 0, 0);
+                
+                classesRaw.push({
+                    id: `${scheduleItem.name}-${classDate.toISOString()}`,
+                    name: scheduleItem.name,
+                    teacher: scheduleItem.teacher,
+                    date: classDate,
+                    day: scheduleItem.day,
+                    time: scheduleItem.time
+                });
+            }
+        }
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    }
+    
+    const classesByName: { [key: string]: typeof classesRaw } = {};
+    for (const cls of classesRaw) {
+        if (!classesByName[cls.name]) {
+            classesByName[cls.name] = [];
+        }
+        classesByName[cls.name].push(cls);
+    }
+
+    const enumeratedClasses: any[] = [];
+    Object.keys(classesByName).forEach(className => {
+        const sortedGroup = classesByName[className].sort((a, b) => a.date.getTime() - b.date.getTime());
+        sortedGroup.forEach((cls, index) => {
+            enumeratedClasses.push({ ...cls, aulaNumber: index + 1 });
+        });
+    });
+
+    return enumeratedClasses.map(cls => ({...cls, isExtra: false}));
+};
+
+
 // Common function to add header and footer
 const addHeaderAndFooter = (doc: any, title: string) => {
   const pageCount = doc.internal.getNumberOfPages();

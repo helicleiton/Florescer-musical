@@ -4,7 +4,7 @@ import { Modal } from './Modal';
 import { ClipboardDocumentListIcon } from './icons/ClipboardDocumentListIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { weeklySchedule, dayNames } from '../data/schedule';
-import { generateAttendanceReportPDF } from '../utils/reportGenerator';
+import { generateAttendanceReportPDF, generateAllFixedClasses } from '../utils/reportGenerator';
 import { DownloadIcon } from './icons/DownloadIcon';
 
 
@@ -17,12 +17,6 @@ interface ScheduleProps {
   onSaveAttendance: (attendance: Attendance) => Promise<void>;
   isAdmin: boolean;
 }
-
-const SAO_PAULO_OFFSET_HOURS = 3;
-// As datas de início/fim do curso agora estão em UTC, representando o momento exato em São Paulo
-// A aula inaugural foi em 01/11, as aulas regulares começam em 04/11.
-const courseStartDate = new Date('2025-11-04T03:00:00Z');   // Representa 00:00 de 4 de Nov em SP
-const courseEndDate = new Date('2026-05-01T02:59:59Z');   // Representa 23:59:59 de 30 de Abr em SP
 
 const getWorkshopColorStyle = (className: string) => {
   const lowerCaseName = className.toLowerCase();
@@ -121,47 +115,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ musicClasses, lessonPlans, o
   }, []);
 
   const allClasses = useMemo(() => {
-    const classesRaw = [];
-    let currentDate = new Date(courseStartDate);
-    while (currentDate <= courseEndDate) {
-      const dayOfWeek = currentDate.getUTCDay();
-      for (const scheduleItem of weeklySchedule) {
-        if (scheduleItem.day === dayOfWeek) {
-          const startTime = scheduleItem.time.split(' ')[0];
-          const [hours, minutes] = startTime.split(':').map(Number);
-          const classDate = new Date(currentDate);
-          classDate.setUTCHours(hours + SAO_PAULO_OFFSET_HOURS, minutes, 0, 0);
-          
-          classesRaw.push({
-            id: `${scheduleItem.name}-${classDate.toISOString()}`,
-            name: scheduleItem.name,
-            teacher: scheduleItem.teacher,
-            date: classDate,
-            day: scheduleItem.day,
-            time: scheduleItem.time
-          });
-        }
-      }
-      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-    }
-    
-    const classesByName: { [key: string]: typeof classesRaw } = {};
-    for (const cls of classesRaw) {
-      if (!classesByName[cls.name]) {
-        classesByName[cls.name] = [];
-      }
-      classesByName[cls.name].push(cls);
-    }
-
-    const enumeratedClasses: any[] = [];
-    Object.keys(classesByName).forEach(className => {
-      const sortedGroup = classesByName[className].sort((a, b) => a.date.getTime() - b.date.getTime());
-      sortedGroup.forEach((cls, index) => {
-        enumeratedClasses.push({ ...cls, aulaNumber: index + 1 });
-      });
-    });
-
-    const fixedClasses: FullClassInfo[] = enumeratedClasses.map(cls => ({...cls, isExtra: false}));
+    const fixedClasses = generateAllFixedClasses();
 
     if (!extraClassesLoaded) {
         return fixedClasses;

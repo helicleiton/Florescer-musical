@@ -19,18 +19,11 @@ import { weeklySchedule } from './data/schedule';
 import { initialStudents } from './data/initialStudents';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
+import { generateAllFixedClasses, getWorkshopNameFromClassName } from './utils/reportGenerator';
 
 
 type View = 'dashboard' | 'students' | 'workshops' | 'schedule' | 'syllabus';
 type UserRole = 'admin' | 'viewer';
-
-const getWorkshopNameFromClassName = (className: string): string => {
-  const parts = className.split(' ');
-  if (parts.length > 1 && /^[A-Z]$/.test(parts[parts.length - 1])) {
-    return parts.slice(0, -1).join(' ');
-  }
-  return className;
-};
 
 const AppContent: React.FC = () => {
   const { addToast } = useToast();
@@ -220,7 +213,7 @@ const AppContent: React.FC = () => {
   const saveLessonPlan = async (lessonPlan: LessonPlan) => {
     try {
       // FIX: Use v8 namespaced API to set a document.
-      await db.collection('lessonPlans').doc(lessonPlan.classId).set(lessonPlan);
+      await db.collection('lessonPlans').doc(lessonPlan.classId).set({ content: lessonPlan.content });
       addToast('Plano de aula salvo com sucesso!', 'success');
     } catch (error) {
       console.error("Erro ao salvar plano de aula: ", error);
@@ -262,10 +255,31 @@ const AppContent: React.FC = () => {
 
   const saveWorkshopLessonPlan = async (planData: WorkshopLessonPlan) => {
     try {
+      // 1. Save the master plan
       await db.collection('workshopLessonPlans').doc(planData.id).set(planData);
+
+      // 2. Find all matching class instances
+      const allFixedClasses = generateAllFixedClasses();
+      const matchingClasses = allFixedClasses.filter(cls =>
+          !cls.isExtra &&
+          getWorkshopNameFromClassName(cls.name) === planData.workshopId &&
+          cls.aulaNumber === planData.lessonNumber
+      );
+
+      // 3. Create a batch write to copy the plan content to individual lesson plans
+      if (matchingClasses.length > 0) {
+          const batch = db.batch();
+          matchingClasses.forEach(cls => {
+              const lessonPlanRef = db.collection('lessonPlans').doc(cls.id);
+              batch.set(lessonPlanRef, { content: planData.content });
+          });
+          await batch.commit();
+          addToast(`Plano copiado para ${matchingClasses.length} turmas.`, 'info');
+      }
+
       addToast('Plano de aula salvo com sucesso!', 'success');
     } catch (error) {
-      console.error("Erro ao salvar plano de aula: ", error);
+      console.error("Erro ao salvar e propagar plano de aula: ", error);
       addToast('Falha ao salvar o plano de aula.', 'error');
     }
   };
