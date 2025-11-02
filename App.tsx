@@ -20,6 +20,7 @@ import { initialStudents } from './data/initialStudents';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
 import { generateAllFixedClasses, getWorkshopNameFromClassName } from './utils/reportGenerator';
+import { WorkshopDetail } from './components/WorkshopDetail';
 
 
 type View = 'dashboard' | 'students' | 'workshops' | 'schedule' | 'syllabus';
@@ -30,6 +31,7 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedWorkshop, setSelectedWorkshop] = useState<Workshop | null>(null);
   
   const [students, setStudents] = useState<Student[]>([]);
   const [musicClasses, setMusicClasses] = useState<MusicClass[]>([]);
@@ -44,6 +46,8 @@ const AppContent: React.FC = () => {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
 
   const isAdmin = userRole === 'admin';
+
+  const allFixedClasses = useMemo(() => generateAllFixedClasses(), []);
 
 
   const derivedWorkshops: Workshop[] = useMemo(() => {
@@ -289,6 +293,15 @@ const AppContent: React.FC = () => {
     setSelectedStudentId(null);
     setCurrentView('students');
   };
+
+  const handleSelectWorkshop = (workshop: Workshop) => {
+    setSelectedWorkshop(workshop);
+  };
+  const handleBackToWorkshops = () => {
+    setSelectedWorkshop(null);
+    setCurrentView('workshops');
+  };
+  
   const handleLogout = async () => {
     try {
       // FIX: Use v8 namespaced signOut.
@@ -320,10 +333,20 @@ const AppContent: React.FC = () => {
                 />;
     }
 
+    if (currentView === 'workshops' && selectedWorkshop) {
+        return <WorkshopDetail
+                    workshop={selectedWorkshop}
+                    students={students}
+                    allClasses={allFixedClasses}
+                    lessonPlans={lessonPlans}
+                    onBack={handleBackToWorkshops}
+                />
+    }
+
     switch (currentView) {
       case 'dashboard': return <Dashboard students={students} workshops={derivedWorkshops} />;
       case 'students': return <Students students={students} onAdd={addStudent} onUpdate={updateStudent} onDelete={deleteStudent} onSelectStudent={handleSelectStudent} isAdmin={isAdmin} />;
-      case 'workshops': return <Workshops workshops={derivedWorkshops} students={students} />;
+      case 'workshops': return <Workshops workshops={derivedWorkshops} students={students} onSelectWorkshop={handleSelectWorkshop} />;
       case 'schedule': return <Schedule musicClasses={musicClasses} lessonPlans={lessonPlans} onSavePlan={saveLessonPlan} students={students} attendances={attendances} onSaveAttendance={saveAttendance} isAdmin={isAdmin} />;
       case 'syllabus': return <Syllabus workshops={derivedWorkshops} lessonPlans={workshopLessonPlans} onSaveLessonPlan={saveWorkshopLessonPlan} isAdmin={isAdmin} />;
       default: return <Dashboard students={students} workshops={derivedWorkshops} />;

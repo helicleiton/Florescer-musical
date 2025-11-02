@@ -1,28 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { Workshop, Student } from '../types';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { weeklySchedule, dayNames } from '../data/schedule';
+import { getWorkshopNameFromClassName } from '../utils/reportGenerator';
 
 interface WorkshopsProps {
   workshops: Workshop[];
   students: Student[];
+  onSelectWorkshop: (workshop: Workshop) => void;
 }
 
 const getWorkshopColorStyle = (workshopName: string) => {
   const lowerCaseName = workshopName.toLowerCase();
-  if (lowerCaseName.includes('teclado')) return { text: 'text-sky-500', border: 'border-sky-500' };
-  if (lowerCaseName.includes('violão')) return { text: 'text-amber-500', border: 'border-amber-500' };
-  if (lowerCaseName.includes('vocal')) return { text: 'text-rose-500', border: 'border-rose-500' };
-  return { text: 'text-primary', border: 'border-primary' }; // Musicalização
+  if (lowerCaseName.includes('teclado')) return { text: 'text-sky-500', bg: 'bg-sky-50' };
+  if (lowerCaseName.includes('violão')) return { text: 'text-amber-500', bg: 'bg-amber-50' };
+  if (lowerCaseName.includes('vocal')) return { text: 'text-rose-500', bg: 'bg-rose-50' };
+  return { text: 'text-primary', bg: 'bg-emerald-50' }; // Musicalização
 };
 
-export const Workshops: React.FC<WorkshopsProps> = ({ workshops, students }) => {
-  const [expandedWorkshopId, setExpandedWorkshopId] = useState<string | null>(null);
-  
-  const toggleStudentList = (workshopId: string) => {
-    setExpandedWorkshopId(prevId => prevId === workshopId ? null : workshopId);
-  }
+export const Workshops: React.FC<WorkshopsProps> = ({ workshops, students, onSelectWorkshop }) => {
 
   return (
     <div className="p-8">
@@ -33,66 +30,38 @@ export const Workshops: React.FC<WorkshopsProps> = ({ workshops, students }) => 
       {workshops.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {workshops.map((workshop) => {
-            const workshopClasses = weeklySchedule.filter(c => c.name.startsWith(workshop.name));
-            const workshopStudents = students.filter(s => s.workshopName && s.workshopName.startsWith(workshop.name));
+            const workshopClasses = weeklySchedule.filter(c => getWorkshopNameFromClassName(c.name) === workshop.name);
+            const workshopStudents = students.filter(s => s.workshopName && getWorkshopNameFromClassName(s.workshopName) === workshop.name);
             const colors = getWorkshopColorStyle(workshop.name);
 
             return (
-              <div key={workshop.id} className="bg-surface rounded-lg shadow-sm overflow-hidden flex flex-col">
-                <div className="p-6">
-                  <div className="flex justify-between items-start">
-                    <h3 className={`text-2xl font-bold ${colors.text} mb-4`}>{workshop.name}</h3>
-                  </div>
+              <button 
+                key={workshop.id} 
+                onClick={() => onSelectWorkshop(workshop)}
+                className="bg-surface rounded-lg shadow-sm overflow-hidden flex flex-col text-left hover:shadow-lg hover:ring-2 hover:ring-primary/50 transition-all duration-200"
+              >
+                <div className="p-6 flex-1">
+                  <h3 className={`text-2xl font-bold ${colors.text} mb-4`}>{workshop.name}</h3>
 
-                  <div className="mb-4">
-                    <h4 className="font-semibold text-on-surface mb-2 flex items-center"><CalendarIcon className="w-5 h-5 mr-2 text-on-surface-secondary"/> Turmas e Horários</h4>
-                    {workshopClasses.length > 0 ? (
-                      <ul className="space-y-2">
-                        {workshopClasses.map(c => (
-                          <li key={c.name} className="flex justify-between p-2 rounded-md bg-slate-50">
-                            <div>
-                                <p className="font-medium text-slate-800">{c.name}</p>
-                                <p className="text-sm text-slate-500">Prof. {c.teacher}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="font-medium text-slate-800">{dayNames[c.day]}</p>
-                                <p className="text-sm text-slate-500">{c.time}</p>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-on-surface-secondary italic">Nenhuma turma fixa encontrada.</p>
-                    )}
+                  <div className="space-y-2">
+                     <div className="flex items-center text-on-surface-secondary">
+                        <CalendarIcon className="w-5 h-5 mr-3 flex-shrink-0" />
+                        <span>{workshopClasses.length} turma{workshopClasses.length !== 1 ? 's' : ''} na grade</span>
+                     </div>
+                     <div className="flex items-center text-on-surface-secondary">
+                        <UserGroupIcon className="w-5 h-5 mr-3 flex-shrink-0" />
+                        <span>{workshopStudents.length} aluno{workshopStudents.length !== 1 ? 's' : ''} matriculado{workshopStudents.length !== 1 ? 's' : ''}</span>
+                     </div>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-200 px-6 py-4 mt-auto">
-                    <button 
-                        onClick={() => toggleStudentList(workshop.id)} 
-                        className="w-full text-left font-semibold text-on-surface flex justify-between items-center"
-                    >
-                        <span className="flex items-center"><UserGroupIcon className="w-5 h-5 mr-2 text-on-surface-secondary"/> Alunos Inscritos ({workshopStudents.length})</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transform transition-transform ${expandedWorkshopId === workshop.id ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                           <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                    </button>
-                    {expandedWorkshopId === workshop.id && (
-                        <div className={`mt-4 pl-2 border-l-2 ${colors.border}`}>
-                            {workshopStudents.length > 0 ? (
-                                <ul className="space-y-1">
-                                    {workshopStudents.map(student => (
-                                        <li key={student.id} className="text-on-surface-secondary ml-2">{student.name}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-sm text-on-surface-secondary italic ml-2">Nenhum aluno inscrito nesta oficina.</p>
-                            )}
-                        </div>
-                    )}
+                <div className={`border-t border-slate-200 px-6 py-3 mt-auto ${colors.bg}`}>
+                    <p className={`font-semibold text-sm ${colors.text} text-center`}>
+                        Ver Detalhes
+                    </p>
                 </div>
 
-              </div>
+              </button>
             );
           })}
         </div>
