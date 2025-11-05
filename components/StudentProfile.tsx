@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Student, StudentNote } from '../types';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 import { DocumentTextIcon } from './icons/DocumentTextIcon';
 import { TrashIcon } from './icons/TrashIcon';
+import { weeklySchedule, dayNames } from '../data/schedule';
 
 interface StudentProfileProps {
   student: Student;
@@ -12,6 +13,7 @@ interface StudentProfileProps {
   onDeleteNote: (id: string) => Promise<void>;
   onBack: () => void;
   isAdmin: boolean;
+  onUpdateStudent: (studentData: Student) => Promise<void>;
 }
 
 const InfoCard: React.FC<{title: string, value: string | number}> = ({title, value}) => (
@@ -21,8 +23,22 @@ const InfoCard: React.FC<{title: string, value: string | number}> = ({title, val
     </div>
 );
 
-export const StudentProfile: React.FC<StudentProfileProps> = ({ student, notes, onAddNote, onDeleteNote, onBack, isAdmin }) => {
+export const StudentProfile: React.FC<StudentProfileProps> = ({ student, notes, onAddNote, onDeleteNote, onBack, isAdmin, onUpdateStudent }) => {
     const [newNote, setNewNote] = useState('');
+
+    const sortedSchedule = useMemo(() => [...weeklySchedule].sort((a, b) => {
+        if (a.day !== b.day) {
+        return a.day - b.day;
+        }
+        const timeA = a.time.split(' ')[0];
+        const timeB = b.time.split(' ')[0];
+        return timeA.localeCompare(timeB);
+    }), []);
+
+    const handleWorkshopChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newWorkshopName = e.target.value || null; // Convert empty string to null
+        onUpdateStudent({ ...student, workshopName: newWorkshopName });
+    };
 
     const handleAddNote = () => {
         if (newNote.trim()) {
@@ -54,7 +70,25 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, notes, 
                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6">
                      <InfoCard title="Idade" value={`${student.age} anos`} />
                      <InfoCard title="Matrícula" value={new Date(student.registrationDate).toLocaleDateString('pt-BR', {timeZone: 'America/Sao_Paulo'})} />
-                     <InfoCard title="Oficina" value={student.workshopName || 'Nenhuma'} />
+                     {isAdmin ? (
+                        <div>
+                            <label htmlFor="workshop" className="block text-sm text-on-surface-secondary">Oficina / Turma</label>
+                            <select
+                                id="workshop"
+                                value={student.workshopName || ''}
+                                onChange={handleWorkshopChange}
+                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface"
+                            >
+                                <option value="">Nenhuma - Aluno Avulso</option>
+                                {sortedSchedule.map(w => {
+                                    const label = `${w.name} - ${dayNames[w.day]} ${w.time} (Prof. ${w.teacher})`;
+                                    return <option key={label} value={w.name}>{label}</option>
+                                })}
+                            </select>
+                        </div>
+                    ) : (
+                        <InfoCard title="Oficina" value={student.workshopName || 'Nenhuma'} />
+                    )}
                  </div>
             </div>
 

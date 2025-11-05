@@ -10,7 +10,7 @@ const courseEndDate = new Date('2026-05-01T02:59:59Z');
 
 export const getWorkshopNameFromClassName = (className: string): string => {
   const parts = className.split(' ');
-  if (parts.length > 1 && /^[A-Z]$/.test(parts[parts.length - 1])) {
+  if (parts.length > 1 && /^[A-Z]\d*$/.test(parts[parts.length - 1])) {
     return parts.slice(0, -1).join(' ');
   }
   return className;

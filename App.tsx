@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db, auth } from './firebase/config';
+// The importmap in index.html maps "firebase/app" to the compat library,
+// which provides the v8 namespaced API and types like `firebase.User`.
+// FIX: Use compat imports to get correct Firebase v8 types like `firebase.User`.
 import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
@@ -47,8 +51,8 @@ const AppContent: React.FC<{ user: firebase.User; userRole: 'admin' | 'viewer' |
     const workshopNames = new Set<string>();
     weeklySchedule.forEach(item => {
         const nameParts = item.name.split(' ');
-        // Remove the class letter (A, B, C...) if it exists
-        const workshopName = (nameParts.length > 1 && /^[A-Z]$/.test(nameParts[nameParts.length - 1]))
+        // Remove the class letter/number (A, B, C, E1, E2...) if it exists
+        const workshopName = (nameParts.length > 1 && /^[A-Z]\d*$/.test(nameParts[nameParts.length - 1]))
             ? nameParts.slice(0, -1).join(' ')
             : item.name;
         workshopNames.add(workshopName);
@@ -198,6 +202,7 @@ const AppContent: React.FC<{ user: firebase.User; userRole: 'admin' | 'viewer' |
           onDeleteNote={handleDeleteNote}
           onBack={handleBackFromProfile}
           isAdmin={isAdmin}
+          onUpdateStudent={handleUpdateStudent}
         />
       );
     }
@@ -209,6 +214,8 @@ const AppContent: React.FC<{ user: firebase.User; userRole: 'admin' | 'viewer' |
                 allClasses={allFixedClasses}
                 lessonPlans={lessonPlans}
                 onBack={handleBackFromWorkshopDetail}
+                isAdmin={isAdmin}
+                onUpdateStudent={handleUpdateStudent}
             />
         );
     }

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { MusicalNoteIcon } from './icons/MusicalNoteIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
@@ -6,9 +5,11 @@ import { CalendarIcon } from './icons/CalendarIcon';
 import { DashboardIcon } from './icons/DashboardIcon';
 import { LogoutIcon } from './icons/LogoutIcon';
 import { UserCircleIcon } from './icons/UserCircleIcon';
-// FIX: Import firebase v9 compat to get User type.
+// The importmap in index.html maps "firebase/app" to the compat library,
+// which provides the v8 namespaced API and types like `firebase.User`.
+// FIX: Use compat imports to get correct Firebase v8 types like `firebase.User`.
 import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
+import 'firebase/compat/auth'; // Required for the `firebase.User` type to be available.
 import { PencilSquareIcon } from './icons/PencilSquareIcon';
 
 type View = 'dashboard' | 'students' | 'workshops' | 'schedule' | 'syllabus' | 'myChild';

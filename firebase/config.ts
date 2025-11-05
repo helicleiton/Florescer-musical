@@ -3,10 +3,9 @@
 // 2. Vá para as configurações do projeto e adicione um novo aplicativo da Web.
 // 3. Copie o objeto de configuração (firebaseConfig) e cole abaixo.
 
-// FIX: Reverted to Firebase v8 API. The project seems to have an older version of the Firebase SDK,
-// which is incompatible with the v9 modular API's `initializeApp` function. All Firebase
-// usage has been updated to the v8 namespaced syntax for consistency.
-// FIX: Use Firebase v9 compat libraries to support v8 syntax.
+// The importmap in index.html maps these imports to the Firebase v9 compat libraries,
+// allowing the use of the v8 namespaced API (e.g., firebase.firestore()).
+// FIX: Use compat imports for Firebase v8 namespaced API to resolve type errors.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 import 'firebase/compat/auth';

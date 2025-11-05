@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react';
-import type { Workshop, Student, FullClassInfo, LessonPlan } from '../types';
+import React, { useMemo, useState } from 'react';
+import type { Workshop, Student, FullClassInfo, LessonPlan, WeeklyClass } from '../types';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { getWorkshopNameFromClassName } from '../utils/reportGenerator';
 import { weeklySchedule, dayNames } from '../data/schedule';
+import { Modal } from './Modal';
+import { UserPlusIcon } from './icons/UserPlusIcon';
 
 interface WorkshopDetailProps {
   workshop: Workshop;
@@ -12,6 +14,8 @@ interface WorkshopDetailProps {
   allClasses: FullClassInfo[];
   lessonPlans: LessonPlan[];
   onBack: () => void;
+  isAdmin: boolean;
+  onUpdateStudent: (student: Student) => Promise<void>;
 }
 
 const ClassTimelineCard: React.FC<{ cls: FullClassInfo; plan: string | undefined }> = ({ cls, plan }) => {
@@ -29,14 +33,87 @@ const ClassTimelineCard: React.FC<{ cls: FullClassInfo; plan: string | undefined
   );
 };
 
-export const WorkshopDetail: React.FC<WorkshopDetailProps> = ({ workshop, students, allClasses, lessonPlans, onBack }) => {
+const AddStudentToTurmaForm: React.FC<{
+    availableStudents: Student[];
+    onSave: (studentId: string) => void;
+    onCancel: () => void;
+}> = ({ availableStudents, onSave, onCancel }) => {
+    const [selectedStudentId, setSelectedStudentId] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (selectedStudentId) {
+            onSave(selectedStudentId);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="student-select" className="block text-sm font-medium text-on-surface-secondary">
+                    Selecione um Aluno Avulso
+                </label>
+                <select
+                    id="student-select"
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface"
+                    required
+                >
+                    <option value="" disabled>Selecione um aluno...</option>
+                    {availableStudents.map(student => (
+                        <option key={student.id} value={student.id}>{student.name}</option>
+                    ))}
+                </select>
+            </div>
+            {availableStudents.length === 0 && (
+                <p className="text-sm text-center text-on-surface-secondary py-2">Não há alunos avulsos disponíveis para adicionar.</p>
+            )}
+            <div className="flex justify-end pt-4 space-x-2">
+                <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md shadow-sm hover:bg-slate-200">Cancelar</button>
+                <button type="submit" disabled={!selectedStudentId} className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-focus disabled:opacity-50 disabled:cursor-not-allowed">Adicionar à Turma</button>
+            </div>
+        </form>
+    );
+};
+
+
+export const WorkshopDetail: React.FC<WorkshopDetailProps> = ({ workshop, students, allClasses, lessonPlans, onBack, isAdmin, onUpdateStudent }) => {
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [selectedTurma, setSelectedTurma] = useState<WeeklyClass | null>(null);
+
   const workshopTurmas = useMemo(() => {
     return weeklySchedule
       .filter(c => getWorkshopNameFromClassName(c.name) === workshop.name)
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [workshop.name]);
 
+  const availableStudents = useMemo(() => {
+    return students.filter(s => !s.workshopName).sort((a,b) => a.name.localeCompare(b.name));
+  }, [students]);
+
   const now = new Date();
+
+  const handleOpenAddStudentModal = (turma: WeeklyClass) => {
+    setSelectedTurma(turma);
+    setIsAddStudentModalOpen(true);
+  };
+  
+  const handleCloseAddStudentModal = () => {
+    setIsAddStudentModalOpen(false);
+    setSelectedTurma(null);
+  };
+
+  const handleAddStudentToTurma = async (studentId: string) => {
+    if (!studentId || !selectedTurma) return;
+
+    const studentToAdd = students.find(s => s.id === studentId);
+    if (studentToAdd) {
+        await onUpdateStudent({ ...studentToAdd, workshopName: selectedTurma.name });
+        handleCloseAddStudentModal();
+    }
+  };
+
 
   return (
     <div className="p-8">
@@ -68,9 +145,20 @@ export const WorkshopDetail: React.FC<WorkshopDetailProps> = ({ workshop, studen
                   <h3 className="text-xl font-bold text-on-surface">{turma.name}</h3>
                   <p className="text-sm text-on-surface-secondary">{dayNames[turma.day]}, {turma.time} – Prof. {turma.teacher}</p>
                 </div>
-                <div className="flex items-center text-sm font-medium bg-primary/10 text-primary px-2.5 py-1 rounded-full">
-                    <UserGroupIcon className="w-4 h-4 mr-2" />
-                    <span>{turmaStudents.length} aluno{turmaStudents.length !== 1 ? 's' : ''}</span>
+                <div className="flex items-center space-x-4">
+                    <div className="flex items-center text-sm font-medium bg-primary/10 text-primary px-2.5 py-1 rounded-full">
+                        <UserGroupIcon className="w-4 h-4 mr-2" />
+                        <span>{turmaStudents.length} aluno{turmaStudents.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    {isAdmin && (
+                        <button 
+                            onClick={() => handleOpenAddStudentModal(turma)}
+                            className="px-3 py-1.5 text-sm font-medium text-secondary bg-secondary/10 border border-secondary/20 rounded-md shadow-sm hover:bg-secondary/20 flex items-center"
+                        >
+                            <UserPlusIcon className="h-4 w-4 mr-2" />
+                            Adicionar Aluno
+                        </button>
+                    )}
                 </div>
               </div>
               
@@ -139,6 +227,20 @@ export const WorkshopDetail: React.FC<WorkshopDetailProps> = ({ workshop, studen
             </p>
         )}
       </div>
+
+      {selectedTurma && (
+        <Modal 
+            isOpen={isAddStudentModalOpen} 
+            onClose={handleCloseAddStudentModal} 
+            title={`Adicionar Aluno à Turma ${selectedTurma.name}`}
+        >
+            <AddStudentToTurmaForm
+                availableStudents={availableStudents}
+                onSave={handleAddStudentToTurma}
+                onCancel={handleCloseAddStudentModal}
+            />
+        </Modal>
+      )}
     </div>
   );
 };

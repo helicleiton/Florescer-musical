@@ -18,12 +18,14 @@ export const Auth: React.FC = () => {
       // FIX: Use v8 namespaced API for authentication.
       await auth.signInWithEmailAndPassword(email, password);
     } catch (err: any) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        setError('E-mail ou senha inválidos.');
+      // The 'auth/invalid-credential' error code is the modern standard for failed login attempts
+      // (wrong email, password, or user not found) in Firebase, providing better security.
+      if (err.code === 'auth/invalid-credential') {
+        setError('E-mail ou senha inválidos. Verifique os dados e tente novamente.');
       } else {
-        setError('Ocorreu um erro. Tente novamente.');
+        setError('Ocorreu um erro inesperado. Por favor, tente novamente.');
       }
-      console.error(err);
+      console.error("Erro de autenticação:", err);
     } finally {
         setLoading(false);
     }

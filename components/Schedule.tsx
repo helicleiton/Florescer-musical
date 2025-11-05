@@ -424,7 +424,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ musicClasses, lessonPlans, o
             if (dayClasses.length === 0) return null;
             return (
               <div key={dayIndex}>
-                <h4 className="font-bold text-center mb-2 border-b pb-2">{dayNames[dayIndex]}</h4>
+                <h4 className="font-bold text-center text-on-surface mb-2 border-b pb-2">{dayNames[dayIndex]}</h4>
                 <div className="space-y-2">
                   {dayClasses.map(c => (
                     <div key={`${c.day}-${c.time}-${c.name}`} className="text-sm p-2 rounded-md bg-slate-50 text-center">
