@@ -7,7 +7,8 @@ export const weeklySchedule: WeeklyClass[] = [
   { day: 2, time: '14:00', name: 'Teclado B', teacher: 'Helicleiton' },
   { day: 2, time: '15:00', name: 'Musicalização Infantil B', teacher: 'Karla Silva' },
   { day: 2, time: '16:00', name: 'Teclado C', teacher: 'Helicleiton' },
-  { day: 2, time: '18:00', name: 'Teclado E', teacher: 'Helicleiton' },
+  { day: 2, time: '17:30', name: 'Teclado E1', teacher: 'Helicleiton' },
+  { day: 2, time: '18:30', name: 'Teclado E2', teacher: 'Helicleiton' },
   
   // Quinta-feira
   { day: 4, time: '08:00', name: 'Violão A', teacher: 'Helicleiton' },
