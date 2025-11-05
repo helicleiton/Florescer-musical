@@ -1,405 +1,346 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { db, auth } from './firebase/config';
+import firebase from 'firebase/compat/app';
+
+import { ToastProvider, useToast } from './contexts/ToastContext';
+import { ToastContainer } from './components/ToastContainer';
+import { Auth } from './components/Auth';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Students } from './components/Students';
 import { Workshops } from './components/Instruments';
 import { Schedule } from './components/Schedule';
-import { Syllabus } from './components/Syllabus';
 import { StudentProfile } from './components/StudentProfile';
-import { Auth } from './components/Auth';
-import type { Student, Workshop, LessonPlan, StudentNote, Attendance, WorkshopLessonPlan, MusicClass } from './types';
-import { MenuIcon } from './components/icons/MenuIcon';
-import { MusicalNoteIcon } from './components/icons/MusicalNoteIcon';
-// FIX: Use Firebase v8 namespaced API.
-import { db, auth } from './firebase/config';
-// FIX: Import firebase v9 compat to get User type.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-import { weeklySchedule } from './data/schedule';
-import { initialStudents } from './data/initialStudents';
-import { ToastProvider, useToast } from './contexts/ToastContext';
-import { ToastContainer } from './components/ToastContainer';
-import { generateAllFixedClasses, getWorkshopNameFromClassName } from './utils/reportGenerator';
 import { WorkshopDetail } from './components/WorkshopDetail';
+import { Syllabus } from './components/Syllabus';
+import { MyChildProfile } from './components/MyChildProfile';
+
+import type { Student, Workshop, MusicClass, LessonPlan, StudentNote, Attendance, WorkshopLessonPlan, FullClassInfo } from './types';
+import { initialStudents } from './data/initialStudents';
+import { weeklySchedule } from './data/schedule';
+import { generateAllFixedClasses } from './utils/reportGenerator';
+import { SpinnerIcon } from './components/icons/SpinnerIcon';
+import { MenuIcon } from './components/icons/MenuIcon';
 
 
-type View = 'dashboard' | 'students' | 'workshops' | 'schedule' | 'syllabus';
-type UserRole = 'admin' | 'viewer';
-
-const AppContent: React.FC = () => {
-  const { addToast } = useToast();
-  const [currentView, setCurrentView] = useState<View>('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [selectedWorkshop, setSelectedWorkshop] = useState<Workshop | null>(null);
+const AppContent: React.FC<{ user: firebase.User; userRole: 'admin' | 'viewer' | 'parent' }> = ({ user, userRole }) => {
+  type View = 'dashboard' | 'students' | 'workshops' | 'schedule' | 'syllabus' | 'myChild';
+  
+  const [currentView, setCurrentView] = useState<View>(userRole === 'parent' ? 'myChild' : 'dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const [students, setStudents] = useState<Student[]>([]);
   const [musicClasses, setMusicClasses] = useState<MusicClass[]>([]);
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
+  const [workshopLessonPlans, setWorkshopLessonPlans] = useState<WorkshopLessonPlan[]>([]);
   const [studentNotes, setStudentNotes] = useState<StudentNote[]>([]);
   const [attendances, setAttendances] = useState<Attendance[]>([]);
-  const [workshopLessonPlans, setWorkshopLessonPlans] = useState<WorkshopLessonPlan[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
-  
-  const [user, setUser] = useState<firebase.User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
 
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedWorkshop, setSelectedWorkshop] = useState<Workshop | null>(null);
+  const [myChild, setMyChild] = useState<Student | null>(null);
+
+  const { addToast } = useToast();
   const isAdmin = userRole === 'admin';
 
-  const allFixedClasses = useMemo(() => generateAllFixedClasses(), []);
+  const workshops: Workshop[] = useMemo(() => {
+    const workshopNames = new Set<string>();
+    weeklySchedule.forEach(item => {
+        const nameParts = item.name.split(' ');
+        // Remove the class letter (A, B, C...) if it exists
+        const workshopName = (nameParts.length > 1 && /^[A-Z]$/.test(nameParts[nameParts.length - 1]))
+            ? nameParts.slice(0, -1).join(' ')
+            : item.name;
+        workshopNames.add(workshopName);
+    });
 
-
-  const derivedWorkshops: Workshop[] = useMemo(() => {
-    const workshopNames = new Set(weeklySchedule.map(c => getWorkshopNameFromClassName(c.name)));
     return Array.from(workshopNames).map(name => ({
-        id: name.toLowerCase().replace(/\s/g, '-'),
-        name: name
+        id: name.toLowerCase().replace(/\s+/g, '-'),
+        name: name,
     })).sort((a,b) => a.name.localeCompare(b.name));
   }, []);
 
+  const allFixedClasses = useMemo(() => generateAllFixedClasses(), []);
+
+  // Data fetching effects
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-      setAuthLoading(true);
-      if (currentUser) {
-        setUser(currentUser);
-        // Fetch role from Firestore
-        try {
-          const userDoc = await db.collection('users').doc(currentUser.uid).get();
-          // The super admin email always overrides the role in DB
-          if (currentUser.email === 'admin@florescer.com') {
-              setUserRole('admin');
-          } else if (userDoc.exists) {
-            const role = userDoc.data()?.role;
-            if (role === 'admin' || role === 'viewer') {
-                setUserRole(role);
-            } else {
-                setUserRole('viewer'); // Default to viewer if role is invalid or missing
-            }
-          } else {
-             // Default new/unassigned users to viewer
-             setUserRole('viewer');
-          }
-        } catch (error) {
-          console.error("Error fetching user role:", error);
-          addToast("Erro ao verificar permissões do usuário.", "error");
-          setUserRole('viewer'); // Fail safe to viewer
-        }
-      } else {
-        // No user logged in
-        setUser(null);
-        setUserRole(null);
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, [addToast]);
-
-  useEffect(() => {
-    if (!user) {
-      setDataLoading(false);
-      setStudents([]);
-      setMusicClasses([]);
-      setLessonPlans([]);
-      setStudentNotes([]);
-      setAttendances([]);
-      setWorkshopLessonPlans([]);
-      return;
-    }
-
-    setDataLoading(true);
-
-    const unsubs: (() => void)[] = [];
-
-    // Setup listener for students with initialization logic
-    const studentsQuery = db.collection('students').orderBy('name', 'asc');
-    unsubs.push(studentsQuery.onSnapshot(
-      async (querySnapshot) => {
-        // Only populate if the database is truly empty and user is admin.
-        if (querySnapshot.empty && isAdmin) {
-          try {
-            addToast('Nenhum aluno encontrado. Carregando lista inicial...', 'info');
-            const batch = db.batch();
-            initialStudents.forEach((student) => {
-              const studentRef = db.collection('students').doc(); // Firestore generates ID
-              batch.set(studentRef, {
-                ...student,
-                registrationDate: new Date().toISOString(),
-              });
-            });
-            await batch.commit();
-            // The onSnapshot listener will be called again automatically after the commit.
-          } catch (error) {
-            console.error('Erro ao popular a lista de alunos: ', error);
-            addToast('Falha ao carregar a lista inicial de alunos.', 'error');
-            setDataLoading(false);
-          }
-        } else {
-          const studentsData = querySnapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() } as Student)
-          );
-          setStudents(studentsData);
-          setDataLoading(false);
-        }
-      },
-      (error) => {
-        console.error('Erro ao buscar alunos: ', error);
-        addToast('Não foi possível carregar os alunos.', 'error');
-        setDataLoading(false);
-      }
-    ));
-
-    // Setup other listeners
-    unsubs.push(db.collection('classes').onSnapshot((querySnapshot) => {
-        const classesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MusicClass));
+    const unsubscribers = [
+      db.collection('students').orderBy('name').onSnapshot(snapshot => {
+        const studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+        setStudents(studentsData);
+      }),
+      db.collection('musicClasses').onSnapshot(snapshot => {
+        const classesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MusicClass));
         setMusicClasses(classesData);
-    }));
-
-    unsubs.push(db.collection('lessonPlans').onSnapshot((querySnapshot) => {
-      const lessonPlansData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as LessonPlan));
-      setLessonPlans(lessonPlansData);
-    }));
-      
-    const notesQuery = db.collection('studentNotes').orderBy('date', 'desc');
-    unsubs.push(notesQuery.onSnapshot((querySnapshot) => {
-        const notesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentNote));
-        setStudentNotes(notesData);
-    }));
-
-    unsubs.push(db.collection('attendances').onSnapshot((querySnapshot) => {
-      const attendanceData = querySnapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as Attendance));
-      setAttendances(attendanceData);
-    }));
-
-    unsubs.push(db.collection('workshopLessonPlans').onSnapshot((querySnapshot) => {
-        const plansData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkshopLessonPlan));
+      }),
+      db.collection('lessonPlans').onSnapshot(snapshot => {
+        const plansData = snapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as LessonPlan));
+        setLessonPlans(plansData);
+      }),
+      db.collection('workshopLessonPlans').onSnapshot(snapshot => {
+        const plansData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkshopLessonPlan));
         setWorkshopLessonPlans(plansData);
-    }));
+      }),
+      db.collection('studentNotes').orderBy('date', 'desc').onSnapshot(snapshot => {
+        const notesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentNote));
+        setStudentNotes(notesData);
+      }),
+      db.collection('attendances').onSnapshot(snapshot => {
+        const attendanceData = snapshot.docs.map(doc => ({ classId: doc.id, ...doc.data() } as Attendance));
+        setAttendances(attendanceData);
+      }),
+    ];
+    return () => unsubscribers.forEach(unsub => unsub());
+  }, []);
 
-    // Cleanup function
-    return () => {
-      unsubs.forEach(unsub => unsub());
+  useEffect(() => {
+    if (userRole === 'parent' && students.length > 0) {
+      const foundChild = students.find(s => s.parentUserId === user.uid);
+      setMyChild(foundChild || null);
+    }
+  }, [userRole, students, user.uid]);
+  
+  // Handlers
+  const handleLogout = () => {
+    auth.signOut().then(() => {
+        addToast("Você saiu com sucesso.", 'info');
+    }).catch(error => {
+        addToast(`Erro ao sair: ${error.message}`, 'error');
+    });
+  };
+
+  const withAdminCheck = <T extends any[]>(func: (...args: T) => Promise<any>, actionName: string) => {
+    return async (...args: T) => {
+        if (!isAdmin) {
+            addToast(`Apenas administradores podem ${actionName}.`, 'error');
+            return;
+        }
+        try {
+            await func(...args);
+        } catch (error: any) {
+            addToast(`Erro ao ${actionName}: ${error.message}`, 'error');
+            console.error(`Error during ${actionName}:`, error);
+        }
     };
-  }, [user, addToast, isAdmin]);
-
-  const addStudent = async (studentData: Omit<Student, 'id'>) => {
-    try {
-      // FIX: Use v8 namespaced API to add a document.
-      await db.collection('students').add(studentData);
-      addToast('Aluno adicionado com sucesso!', 'success');
-    } catch (error) {
-      console.error("Erro ao adicionar aluno: ", error);
-      addToast('Falha ao adicionar aluno.', 'error');
-    }
-  };
-  const updateStudent = async (studentData: Student) => {
-    try {
-      // FIX: Use v8 namespaced API to set a document.
-      const studentRef = db.collection('students').doc(studentData.id);
-      await studentRef.set(studentData, { merge: true });
-      addToast('Aluno atualizado com sucesso!', 'success');
-    } catch (error) {
-      console.error("Erro ao atualizar aluno: ", error);
-      addToast('Falha ao atualizar aluno.', 'error');
-    }
-  };
-  const deleteStudent = async (id: string) => {
-    try {
-      // FIX: Use v8 namespaced API to delete a document.
-      await db.collection('students').doc(id).delete();
-      addToast('Aluno removido com sucesso!', 'success');
-    } catch (error) {
-      console.error("Erro ao remover aluno: ", error);
-      addToast('Falha ao remover aluno.', 'error');
-    }
   };
 
-  const saveLessonPlan = async (lessonPlan: LessonPlan) => {
-    try {
-      // FIX: Use v8 namespaced API to set a document.
-      await db.collection('lessonPlans').doc(lessonPlan.classId).set({ content: lessonPlan.content });
-      addToast('Plano de aula salvo com sucesso!', 'success');
-    } catch (error) {
-      console.error("Erro ao salvar plano de aula: ", error);
-      addToast('Falha ao salvar o plano de aula.', 'error');
+  const handleAddStudent = withAdminCheck(async (studentData: Omit<Student, 'id'>) => {
+    await db.collection('students').add(studentData);
+    addToast('Aluno adicionado com sucesso!', 'success');
+  }, 'adicionar aluno');
+
+  const handleUpdateStudent = withAdminCheck(async (studentData: Student) => {
+    const { id, ...data } = studentData;
+    await db.collection('students').doc(id).update(data);
+    addToast('Aluno atualizado com sucesso!', 'success');
+  }, 'atualizar aluno');
+
+  const handleDeleteStudent = withAdminCheck(async (id: string) => {
+    await db.collection('students').doc(id).delete();
+    addToast('Aluno removido com sucesso!', 'success');
+  }, 'remover aluno');
+
+  const handleSaveLessonPlan = withAdminCheck(async (plan: LessonPlan) => {
+    await db.collection('lessonPlans').doc(plan.classId).set({ content: plan.content });
+    addToast('Plano de aula salvo!', 'success');
+  }, 'salvar plano de aula');
+  
+  const handleSaveWorkshopLessonPlan = withAdminCheck(async (plan: WorkshopLessonPlan) => {
+    const { id, ...dataToSave } = plan;
+    await db.collection('workshopLessonPlans').doc(id).set(dataToSave, { merge: true });
+    addToast(`Plano para a aula ${plan.lessonNumber} salvo!`, 'success');
+  }, 'salvar planejamento');
+
+  const handleSaveAttendance = withAdminCheck(async (attendance: Attendance) => {
+    await db.collection('attendances').doc(attendance.classId).set({ records: attendance.records });
+    addToast('Frequência salva!', 'success');
+  }, 'salvar frequência');
+
+  const handleAddNote = withAdminCheck(async (note: Omit<StudentNote, 'id'>) => {
+    await db.collection('studentNotes').add(note);
+    addToast('Anotação adicionada.', 'success');
+  }, 'adicionar anotação');
+
+  const handleDeleteNote = withAdminCheck(async (id: string) => {
+    await db.collection('studentNotes').doc(id).delete();
+    addToast('Anotação removida.', 'success');
+  }, 'remover anotação');
+
+  // Navigation handlers
+  const handleSelectStudent = (id: string) => {
+    if (userRole === 'parent') return;
+    const student = students.find(s => s.id === id);
+    if (student) {
+        setSelectedStudent(student);
     }
   };
   
-  const addStudentNote = async (noteData: Omit<StudentNote, 'id'>) => {
-    try {
-      // FIX: Use v8 namespaced API to add a document.
-      await db.collection('studentNotes').add(noteData);
-      addToast('Anotação adicionada com sucesso!', 'success');
-    } catch (error) {
-      console.error("Erro ao adicionar anotação: ", error);
-      addToast('Falha ao adicionar anotação.', 'error');
-    }
-  };
-  const deleteStudentNote = async (id: string) => {
-    try {
-      // FIX: Use v8 namespaced API to delete a document.
-      await db.collection('studentNotes').doc(id).delete();
-      addToast('Anotação removida com sucesso!', 'success');
-    } catch (error) {
-      console.error("Erro ao remover anotação: ", error);
-      addToast('Falha ao remover anotação.', 'error');
-    }
-  };
-
-  const saveAttendance = async (attendanceData: Attendance) => {
-    try {
-      // FIX: Use v8 namespaced API to set a document.
-      await db.collection('attendances').doc(attendanceData.classId).set({ records: attendanceData.records });
-      addToast('Frequência salva com sucesso!', 'success');
-    } catch (error) {
-      console.error("Erro ao salvar frequência: ", error);
-      addToast('Falha ao salvar frequência.', 'error');
-    }
-  };
-
-  const saveWorkshopLessonPlan = async (planData: WorkshopLessonPlan) => {
-    try {
-      // 1. Save the master plan
-      await db.collection('workshopLessonPlans').doc(planData.id).set(planData);
-
-      // 2. Find all matching class instances
-      const allFixedClasses = generateAllFixedClasses();
-      const matchingClasses = allFixedClasses.filter(cls =>
-          !cls.isExtra &&
-          getWorkshopNameFromClassName(cls.name) === planData.workshopId &&
-          cls.aulaNumber === planData.lessonNumber
-      );
-
-      // 3. Create a batch write to copy the plan content to individual lesson plans
-      if (matchingClasses.length > 0) {
-          const batch = db.batch();
-          matchingClasses.forEach(cls => {
-              const lessonPlanRef = db.collection('lessonPlans').doc(cls.id);
-              batch.set(lessonPlanRef, { content: planData.content });
-          });
-          await batch.commit();
-          addToast(`Plano copiado para ${matchingClasses.length} turmas.`, 'info');
-      }
-
-      addToast('Plano de aula salvo com sucesso!', 'success');
-    } catch (error) {
-      console.error("Erro ao salvar e propagar plano de aula: ", error);
-      addToast('Falha ao salvar o plano de aula.', 'error');
-    }
-  };
-  
-  const handleSelectStudent = (id: string) => setSelectedStudentId(id);
-  const handleBackToStudents = () => {
-    setSelectedStudentId(null);
-    setCurrentView('students');
-  };
-
   const handleSelectWorkshop = (workshop: Workshop) => {
     setSelectedWorkshop(workshop);
-  };
-  const handleBackToWorkshops = () => {
-    setSelectedWorkshop(null);
     setCurrentView('workshops');
   };
-  
-  const handleLogout = async () => {
-    try {
-      // FIX: Use v8 namespaced signOut.
-      await auth.signOut();
-    } catch (error) {
-      console.error("Erro ao sair: ", error);
-      addToast('Falha ao tentar sair.', 'error');
-    }
+
+  const handleBackFromProfile = () => {
+    setSelectedStudent(null);
   };
-
+  
+  const handleBackFromWorkshopDetail = () => {
+    setSelectedWorkshop(null);
+  };
+  
   const renderView = () => {
-    if (dataLoading) {
-      return <div className="flex items-center justify-center h-full"><p>Carregando dados...</p></div>
+    if (selectedStudent && userRole !== 'parent') {
+      return (
+        <StudentProfile
+          student={selectedStudent}
+          notes={studentNotes.filter(n => n.studentId === selectedStudent.id)}
+          onAddNote={handleAddNote}
+          onDeleteNote={handleDeleteNote}
+          onBack={handleBackFromProfile}
+          isAdmin={isAdmin}
+        />
+      );
     }
-    
-    if (selectedStudentId) {
-        const student = students.find(s => s.id === selectedStudentId);
-        if (!student) {
-            setSelectedStudentId(null);
-            return <p>Aluno não encontrado.</p>;
-        }
-        return <StudentProfile 
-                    student={student}
-                    notes={studentNotes.filter(n => n.studentId === selectedStudentId)}
-                    onAddNote={addStudentNote}
-                    onDeleteNote={deleteStudentNote}
-                    onBack={handleBackToStudents}
-                    isAdmin={isAdmin}
-                />;
-    }
-
-    if (currentView === 'workshops' && selectedWorkshop) {
-        return <WorkshopDetail
-                    workshop={selectedWorkshop}
-                    students={students}
-                    allClasses={allFixedClasses}
-                    lessonPlans={lessonPlans}
-                    onBack={handleBackToWorkshops}
-                />
+    if (selectedWorkshop) {
+        return (
+            <WorkshopDetail
+                workshop={selectedWorkshop}
+                students={students}
+                allClasses={allFixedClasses}
+                lessonPlans={lessonPlans}
+                onBack={handleBackFromWorkshopDetail}
+            />
+        );
     }
 
     switch (currentView) {
-      case 'dashboard': return <Dashboard students={students} workshops={derivedWorkshops} />;
-      case 'students': return <Students students={students} onAdd={addStudent} onUpdate={updateStudent} onDelete={deleteStudent} onSelectStudent={handleSelectStudent} isAdmin={isAdmin} />;
-      case 'workshops': return <Workshops workshops={derivedWorkshops} students={students} onSelectWorkshop={handleSelectWorkshop} />;
-      case 'schedule': return <Schedule musicClasses={musicClasses} lessonPlans={lessonPlans} onSavePlan={saveLessonPlan} students={students} attendances={attendances} onSaveAttendance={saveAttendance} isAdmin={isAdmin} />;
-      case 'syllabus': return <Syllabus workshops={derivedWorkshops} lessonPlans={workshopLessonPlans} onSaveLessonPlan={saveWorkshopLessonPlan} isAdmin={isAdmin} />;
-      default: return <Dashboard students={students} workshops={derivedWorkshops} />;
+      case 'dashboard':
+        return userRole !== 'parent' ? <Dashboard students={students} workshops={workshops} /> : null;
+      case 'students':
+        return userRole !== 'parent' ? <Students
+          students={students}
+          onAdd={handleAddStudent}
+          onUpdate={handleUpdateStudent}
+          onDelete={handleDeleteStudent}
+          onSelectStudent={handleSelectStudent}
+          isAdmin={isAdmin}
+        /> : null;
+      case 'myChild':
+        if (userRole === 'parent') {
+            if (myChild) {
+                return <MyChildProfile student={myChild} />;
+            }
+            return (
+                <div className="p-8 text-center">
+                    <h2 className="text-2xl font-bold text-on-surface mb-4">Bem-vindo(a)!</h2>
+                    <p className="text-on-surface-secondary">Seu perfil de responsável ainda não foi vinculado a um aluno. Por favor, entre em contato com a administração do projeto para fazer a vinculação.</p>
+                </div>
+            );
+        }
+        return null;
+      case 'workshops':
+        return <Workshops students={students} workshops={workshops} onSelectWorkshop={handleSelectWorkshop}/>;
+      case 'schedule':
+        return <Schedule 
+            musicClasses={musicClasses}
+            lessonPlans={lessonPlans}
+            onSavePlan={handleSaveLessonPlan}
+            students={students}
+            attendances={attendances}
+            onSaveAttendance={handleSaveAttendance}
+            isAdmin={isAdmin}
+        />;
+      case 'syllabus':
+          return <Syllabus
+              workshops={workshops}
+              lessonPlans={workshopLessonPlans}
+              onSaveLessonPlan={handleSaveWorkshopLessonPlan}
+              isAdmin={isAdmin}
+          />;
+      default:
+        return userRole !== 'parent' ? <Dashboard students={students} workshops={workshops} /> : <div />;
     }
   };
-  
-  if (authLoading) {
-    return <div className="flex items-center justify-center h-screen bg-background"><p className="text-on-surface">Verificando autenticação...</p></div>;
-  }
-  if (!user) {
-    return <Auth />;
-  }
 
   return (
-    <div className="flex bg-background text-on-surface min-h-screen font-sans">
-      <Sidebar 
-        currentView={currentView} 
-        setCurrentView={setCurrentView} 
-        isOpen={isSidebarOpen} 
-        setIsOpen={setIsSidebarOpen}
+    <div className="flex h-screen bg-slate-50">
+      <Sidebar
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        isOpen={sidebarOpen}
+        setIsOpen={setSidebarOpen}
         onLogout={handleLogout}
         user={user}
         userRole={userRole}
       />
-      <div className="flex flex-col flex-1">
-        <header className="md:hidden bg-surface shadow-sm flex items-center justify-between p-4 sticky top-0 z-10">
-          <div className="flex items-center">
-             <div className="p-1.5 mr-3 text-white rounded-lg bg-primary">
-               <MusicalNoteIcon className="w-5 h-5" />
-             </div>
-             <h1 className="text-lg font-bold text-on-surface">
-               Florescer <span className="font-normal text-primary">Musical</span>
-             </h1>
-          </div>
-          <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-on-surface rounded-md hover:bg-slate-100">
-            <MenuIcon className="w-6 h-6" />
-          </button>
-        </header>
-        <main className="flex-1">
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="md:hidden flex-shrink-0 bg-surface border-b border-slate-200">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-4 text-slate-500 hover:text-primary"
+              aria-label="Abrir menu"
+            >
+              <MenuIcon className="h-6 w-6" />
+            </button>
+        </div>
+        <div className="flex-1 overflow-x-hidden overflow-y-auto">
           {renderView()}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
 
-function App() {
-  return (
-    <ToastProvider>
-      <AppContent />
-      <ToastContainer />
-    </ToastProvider>
-  );
+const App: React.FC = () => {
+  const [user, setUser] = useState<firebase.User | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'viewer' | 'parent' | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (userAuth) => {
+      if (userAuth) {
+        try {
+            const roleDoc = await db.collection('roles').doc(userAuth.uid).get();
+            if (roleDoc.exists) {
+                setUserRole(roleDoc.data()?.role || 'viewer');
+            } else {
+                setUserRole('viewer'); // Default role if not found
+            }
+            setUser(userAuth);
+        } catch (error) {
+            console.error("Error fetching user role:", error);
+            setUser(userAuth); // Log in user even if role fetch fails
+            setUserRole('viewer');
+        }
+      } else {
+        setUser(null);
+        setUserRole(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <SpinnerIcon className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  return user && userRole ? <AppContent user={user} userRole={userRole} /> : <Auth />;
 }
 
-export default App;
+
+const Root: React.FC = () => {
+    return (
+        <ToastProvider>
+            <App />
+            <ToastContainer />
+        </ToastProvider>
+    );
+};
+
+export default Root;

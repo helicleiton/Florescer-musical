@@ -181,7 +181,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ musicClasses, lessonPlans, o
 
   const openAttendanceModal = (cls: FullClassInfo) => {
     const studentsInClass = cls.isExtra
-        ? students.filter(s => cls.studentIds?.includes(s.id))
+        ? students.filter(s => (cls.studentIds || []).includes(s.id))
         : students.filter(s => s.workshopName === cls.name);
 
     const existingAttendance = attendances.find(a => a.classId === cls.id) || { classId: cls.id, records: {} };
@@ -270,7 +270,7 @@ export const Schedule: React.FC<ScheduleProps> = ({ musicClasses, lessonPlans, o
                 {classesForDay.sort((a,b) => a.date.getTime() - b.date.getTime()).map(c => {
                   const hasPlan = lessonPlans.some(p => p.classId === c.id && p.content.trim() !== '');
                   const attendanceRecord = attendances.find(a => a.classId === c.id);
-                  const hasAttendance = attendanceRecord && Object.keys(attendanceRecord.records).length > 0;
+                  const hasAttendance = attendanceRecord && attendanceRecord.records && Object.keys(attendanceRecord.records).length > 0;
                   const colors = getWorkshopColorStyle(c.name);
   
                   return (

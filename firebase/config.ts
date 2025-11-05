@@ -21,7 +21,9 @@ const firebaseConfig = {
 };
 
 // Inicializa o Firebase
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 
 // Inicializa o Cloud Firestore e o Firebase Authentication usando a API v8.
 export const db = firebase.firestore();

@@ -154,7 +154,7 @@ export const Classes: React.FC<ClassesProps> = ({ classes, students, onAdd, onUp
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.topic}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.teacher}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {c.studentIds.map(getStudentName).join(', ') || 'Nenhum'}
+                  {(c.studentIds || []).map(getStudentName).join(', ') || 'Nenhum'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                   <button onClick={() => openEditModal(c)} className="text-secondary hover:text-secondary/80">Editar</button>

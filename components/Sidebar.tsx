@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { MusicalNoteIcon } from './icons/MusicalNoteIcon';
 import { UserGroupIcon } from './icons/UserGroupIcon';
@@ -7,9 +8,10 @@ import { LogoutIcon } from './icons/LogoutIcon';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 // FIX: Import firebase v9 compat to get User type.
 import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 import { PencilSquareIcon } from './icons/PencilSquareIcon';
 
-type View = 'dashboard' | 'students' | 'workshops' | 'schedule' | 'syllabus';
+type View = 'dashboard' | 'students' | 'workshops' | 'schedule' | 'syllabus' | 'myChild';
 
 interface SidebarProps {
   currentView: View;
@@ -18,7 +20,7 @@ interface SidebarProps {
   setIsOpen: (isOpen: boolean) => void;
   onLogout: () => void;
   user: firebase.User | null;
-  userRole: 'admin' | 'viewer' | null;
+  userRole: 'admin' | 'viewer' | 'parent' | null;
 }
 
 const NavItem: React.FC<{
@@ -51,6 +53,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, i
     }
   };
   
+  const getRoleLabel = () => {
+      switch(userRole) {
+          case 'admin': return 'Administrador';
+          case 'parent': return 'Responsável';
+          default: return 'Visualizador';
+      }
+  }
+
   return (
     <>
       {/* Overlay for mobile */}
@@ -66,21 +76,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, i
           </h1>
         </div>
         <nav className="flex-1 space-y-2">
-          <NavItem
-            icon={<DashboardIcon />}
-            label="Dashboard"
-            isActive={currentView === 'dashboard'}
-            onClick={() => handleNavClick('dashboard')}
-          />
-          <NavItem
-            icon={<UserGroupIcon />}
-            label="Alunos"
-            isActive={currentView === 'students'}
-            onClick={() => handleNavClick('students')}
-          />
+          {userRole !== 'parent' && (
+            <>
+              <NavItem
+                icon={<DashboardIcon />}
+                label="Dashboard"
+                isActive={currentView === 'dashboard'}
+                onClick={() => handleNavClick('dashboard')}
+              />
+              <NavItem
+                icon={<UserGroupIcon />}
+                label="Alunos"
+                isActive={currentView === 'students'}
+                onClick={() => handleNavClick('students')}
+              />
+            </>
+          )}
+          {userRole === 'parent' && (
+             <NavItem
+                icon={<UserCircleIcon />}
+                label="Meu Filho"
+                isActive={currentView === 'myChild'}
+                onClick={() => handleNavClick('myChild')}
+             />
+          )}
           <NavItem
             icon={<MusicalNoteIcon />}
-            label="Oficinas"
+            label="Oficinas e Turmas"
             isActive={currentView === 'workshops'}
             onClick={() => handleNavClick('workshops')}
           />
@@ -108,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, i
                                 {user.email}
                             </p>
                             <p className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full inline-block mt-1">
-                                {userRole === 'admin' ? 'Administrador' : 'Visualizador'}
+                                {getRoleLabel()}
                             </p>
                         </div>
                     </div>

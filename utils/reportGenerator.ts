@@ -234,7 +234,7 @@ export const generateAttendanceReportPDF = (
 
   classes.forEach((cls, index) => {
     const studentsInClass = cls.isExtra
-        ? students.filter(s => cls.studentIds?.includes(s.id))
+        ? students.filter(s => (cls.studentIds || []).includes(s.id))
         : students.filter(s => s.workshopName === cls.name);
 
     if (studentsInClass.length === 0) return;

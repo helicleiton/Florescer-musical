@@ -8,7 +8,7 @@ import { generateStudentListPDF } from '../utils/reportGenerator';
 
 interface StudentsProps {
   students: Student[];
-  onAdd: (studentData: Omit<Student, 'id' | 'registrationDate'>) => Promise<void>;
+  onAdd: (studentData: Omit<Student, 'id'>) => Promise<void>;
   onUpdate: (studentData: Student) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onSelectStudent: (id: string) => void;
@@ -17,17 +17,28 @@ interface StudentsProps {
 
 const StudentForm: React.FC<{
   student: Partial<Student> | null;
-  onSave: (student: Omit<Student, 'id'> & { id?: string }) => void;
+  // FIX: Unify the onSave signature to not expect registrationDate, resolving the type conflict between add and edit handlers.
+  onSave: (student: Omit<Student, 'id' | 'registrationDate'> & { id?: string }) => void;
   onCancel: () => void;
 }> = ({ student, onSave, onCancel }) => {
   const [name, setName] = useState(student?.name || '');
   const [age, setAge] = useState(student?.age || 0);
   const [workshopName, setWorkshopName] = useState(student?.workshopName || '');
+  const [parentUserId, setParentUserId] = useState(student?.parentUserId || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && age > 0) {
-      onSave({ ...(student || {}), name, age, workshopName: workshopName || null });
+      // FIX: Construct the payload for onSave without registrationDate to match the updated unified signature.
+      // The student's id is preserved if it exists (when editing).
+      const dataToSave = {
+        name,
+        age,
+        workshopName: workshopName || null,
+        parentUserId: parentUserId || undefined,
+        ...(student?.id && { id: student.id }),
+      };
+      onSave(dataToSave);
     }
   };
 
@@ -64,6 +75,10 @@ const StudentForm: React.FC<{
             return <option key={label} value={w.name}>{label}</option>
           })}
         </select>
+      </div>
+      <div>
+        <label htmlFor="parentUserId" className="block text-sm font-medium text-on-surface-secondary">ID do Usuário do Responsável (Opcional)</label>
+        <input type="text" id="parentUserId" value={parentUserId} onChange={(e) => setParentUserId(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-surface text-on-surface" placeholder="Cole o User UID do responsável aqui" />
       </div>
       <div className="flex justify-end pt-4 space-x-2">
         <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md shadow-sm hover:bg-slate-200">Cancelar</button>
@@ -126,16 +141,19 @@ export const Students: React.FC<StudentsProps> = ({ students, onAdd, onUpdate, o
   }, [filteredStudents]);
 
 
-  const handleAddStudent = (studentData: Omit<Student, 'id' | 'registrationDate'>) => {
+  const handleAddStudent = (studentData: Omit<Student, 'id' | 'registrationDate'> & { id?: string }) => {
+    // The id property is ignored, but the signature now matches handleEditStudent for the ternary operator.
+    const { id, ...restOfData } = studentData;
     const newStudentData = {
-      ...studentData,
+      ...restOfData,
       registrationDate: new Date().toISOString(),
     };
     onAdd(newStudentData);
     setIsModalOpen(false);
   };
 
-  const handleEditStudent = (studentData: Omit<Student, 'id'> & { id?: string }) => {
+  // FIX: Update signature to not expect registrationDate from the form, making it compatible with handleAddStudent.
+  const handleEditStudent = (studentData: Omit<Student, 'id' | 'registrationDate'> & { id?: string }) => {
     if (editingStudent) {
         onUpdate({ ...editingStudent, ...studentData });
     }

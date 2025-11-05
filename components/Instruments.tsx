@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Workshop, Student } from '../types';
 import { UserGroupIcon } from './icons/UserGroupIcon';
@@ -24,7 +25,7 @@ export const Workshops: React.FC<WorkshopsProps> = ({ workshops, students, onSel
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-on-surface">Oficinas</h2>
+        <h2 className="text-3xl font-bold text-on-surface">Oficinas e Turmas</h2>
       </div>
 
       {workshops.length > 0 ? (

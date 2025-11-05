@@ -22,7 +22,7 @@ export const initialStudents: InitialStudent[] = [
   { name: 'Adriel Holanda Sousa de Santana', age: 11, workshopName: 'Teclado B' },
   { name: 'Aghata Marques Alves', age: 9, workshopName: 'Teclado B' },
   { name: 'Cristian Nicollas Antunes da Silva', age: 8, workshopName: 'Teclado B' },
-  { name: 'Willyan Bryam Marques Alves', age: 11, workshopName: 'Teclado B' },
+  { name: 'Willyam Bryan Marques Alves', age: 11, workshopName: 'Teclado B' },
 
   // Musicalização Infantil B (Terça 15:00)
   { name: 'Angelo Fernandes Menezes', age: 6, workshopName: 'Musicalização Infantil B' },
@@ -35,25 +35,23 @@ export const initialStudents: InitialStudent[] = [
   // Teclado C (Terça 16:00)
   { name: 'Alícia Diva Moreira Ferreira', age: 11, workshopName: 'Teclado C' },
   { name: 'Andre Nogueira Bessa', age: 12, workshopName: 'Teclado C' },
-  { name: 'Benjamin Juca Trevisan', age: 11, workshopName: 'Teclado C' },
+  { name: 'Benjamin Jucá Trevisam', age: 11, workshopName: 'Teclado C' },
   { name: 'Emylle Sophia Maciel de Aguiar', age: 10, workshopName: 'Teclado C' },
   { name: 'Helano Rodrigues Crisostomo', age: 11, workshopName: 'Teclado C' },
-  { name: 'João Rafael de Souisa Maia', age: 7, workshopName: 'Teclado C' },
+  { name: 'João Rafael de Sousa Maia', age: 7, workshopName: 'Teclado C' },
   { name: 'Maria Luiza de Sousa Maia', age: 11, workshopName: 'Teclado C' },
-  { name: 'Pericles dos Santos Matias', age: 11, workshopName: 'Teclado C' },
+  { name: 'Péricles dos Santos Matias', age: 11, workshopName: 'Teclado C' },
 
-  // Teclado E1 (Terça 17:30)
-  { name: 'Dhonny Breno Lima Silva', age: 6, workshopName: 'Teclado E1' },
-  { name: 'Nacelio Gabriel Lima Pereira', age: 7, workshopName: 'Teclado E1' },
-  { name: 'Ravi Lopes Santiago', age: 5, workshopName: 'Teclado E1' },
-
-  // Teclado E2 (Terça 18:30)
-  { name: 'Heitor Chagas Rocha', age: 9, workshopName: 'Teclado E2' },
-  { name: 'Iuri de Oliveira', age: 14, workshopName: 'Teclado E2' },
-  { name: 'Maria Nicolly Sebastião da Silva', age: 11, workshopName: 'Teclado E2' },
-  { name: 'Pablo Javier Oliveira França', age: 8, workshopName: 'Teclado E2' },
-  { name: 'Pedro Daniel Chagas Rocha', age: 11, workshopName: 'Teclado E2' },
-  { name: 'Victor Gabriel de Oliveira Alves', age: 10, workshopName: 'Teclado E2' },
+  // Teclado E (Terça 17:30)
+  { name: 'Dhonny Breno Lima de Oliveira', age: 6, workshopName: 'Teclado E' },
+  { name: 'Nacelio Gabriel Lima Pereira', age: 7, workshopName: 'Teclado E' },
+  { name: 'Ravi Lopes Santiago', age: 5, workshopName: 'Teclado E' },
+  { name: 'Heitor Chagas Rocha', age: 9, workshopName: 'Teclado E' },
+  { name: 'Iuri de Oliveira', age: 14, workshopName: 'Teclado E' },
+  { name: 'Maria Nicole Sebastião da Silva', age: 11, workshopName: 'Teclado E' },
+  { name: 'Pablo Javier Oliveira França', age: 8, workshopName: 'Teclado E' },
+  { name: 'Pedro Daniel Chagas Rocha', age: 11, workshopName: 'Teclado E' },
+  { name: 'Victor Gabriel de Oliveira Alves', age: 10, workshopName: 'Teclado E' },
 
   // Violão A (Quinta 08:00)
   { name: 'Adrícia Kelly Barbosa Magalhães', age: 15, workshopName: 'Violão A' },

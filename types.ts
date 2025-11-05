@@ -4,6 +4,7 @@ export interface Student {
   age: number;
   workshopName: string | null;
   registrationDate: string; // ISO string
+  parentUserId?: string;
 }
 
 export interface Workshop {
@@ -18,7 +19,7 @@ export interface LessonPlan {
 
 // FIX: Added missing MusicClass interface.
 export interface MusicClass {
-  id: string;
+  id:string;
   topic: string;
   teacher: string;
   date: string; // ISO string
